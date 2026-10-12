@@ -156,6 +156,11 @@ hr { border-color: var(--ag-line); margin: 1.4rem 0; }
 .ag-summary-price strong { display: block; font-size: 25px; color: var(--ag-ink); margin-top: 4px; }
 .ag-summary-price small { font-size: 13px; font-weight: 400; }
 .ag-summary-upside { font-size: 16px; font-weight: 700; color: var(--ag-summary-text); margin-top: 6px; }
+/* Tab 4 (Cổ tức) / 5 (VN100) đang mở → ẩn khối định giá phía trên thanh tab (thẻ khuyến nghị, cảnh báo,
+   cờ) cho 2 tab này gọn; chuyển lại tab định giá thì hiện lại ngay, không gọi lại server (D55). */
+.stMainBlockContainer > [data-testid="stVerticalBlock"]:has(> [data-testid="stTabs"] > div > div > [role="tablist"] > button[role="tab"]:is(:nth-of-type(4), :nth-of-type(5))[aria-selected="true"]) .st-key-valuation_head {
+    display: none;
+}
 @media (max-width: 1100px) {
     .stMainBlockContainer { padding-left: 1.5rem; padding-right: 1.5rem; }
     .ag-summary-band { grid-template-columns: 1fr; gap: 18px; }
@@ -265,6 +270,48 @@ hr { border-color: var(--ag-line); margin: 1.4rem 0; }
     }
     [data-testid="stMarkdownContainer"] .ag-summary-title { font-size: 21px; }
     .ag-summary-band { padding: 14px; }
+}
+/* ≤640px: 5 tab cấp trang thành thanh điều hướng cố định ở đáy như app (D54). Chỉ chọn tab là con trực
+   tiếp của khối nội dung chính → tab lồng bên trong các trang vẫn như cũ. */
+@media (max-width: 640px) {
+    .stMainBlockContainer { padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"] {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 999990;
+        flex-wrap: nowrap; gap: 0; margin: 0;
+        padding: 0 4px env(safe-area-inset-bottom);
+        background: #fff; border-top: 1px solid var(--ag-line);
+        box-shadow: 0 -4px 14px rgba(15, 23, 42, .08);
+    }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"] > [role="tab"] {
+        flex: 1 1 0; min-width: 0; min-height: 60px; padding: 6px 2px 4px;
+        flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"] > [role="tab"] p {
+        font-size: 11px; line-height: 1.2; white-space: normal; text-align: center;
+    }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"] > [role="tab"][aria-selected="true"] {
+        box-shadow: inset 0 3px 0 var(--ag-green-text); background: var(--ag-mint);
+    }
+    /* Đủ 5 tab (đã nạp mã): icon + tên ngắn; tên đầy đủ vẫn còn cho trình đọc màn hình. */
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"] p {
+        position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]::before {
+        font-size: 20px; line-height: 1;
+    }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]::after {
+        font: 700 11px/1.2 var(--ag-font); white-space: nowrap;
+    }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(1)::before { content: "📊"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(1)::after { content: "BCTC"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(2)::before { content: "🎯"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(2)::after { content: "Định giá"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(3)::before { content: "🏦"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(3)::after { content: "CTCK"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(4)::before { content: "💵"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(4)::after { content: "Cổ tức"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(5)::before { content: "🏆"; }
+    .stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"] > div > div > [role="tablist"]:has(> button[role="tab"]:nth-of-type(5)) > [role="tab"]:nth-of-type(5)::after { content: "VN100"; }
 }
 /* Điện thoại cảm ứng: Plotly chặn cuộn khi vuốt lên chart (preventDefault) → trang kẹt trên các chart cao.
    Chart thành tĩnh khi chạm (mất tooltip/zoom), đổi lại cuộn được. Chỉ ≤768px: iPad/tablet giữ tương tác.

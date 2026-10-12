@@ -1658,3 +1658,28 @@ RI/DCF đầy đủ của Shinhan không so trực tiếp: kỳ đầu 6 tháng 
 - `requirements.txt` ghim `streamlit==1.55.0`, `plotly==7.0.0` (CSS dựa vào data-testid nội bộ).
 - VPS: `docs/DEPLOY_VPS.md` — systemd nghe 127.0.0.1, Caddy HTTPS + basic_auth (app không có đăng nhập; link công
   khai = ai cũng bấm được nút DeepSeek/quét dữ liệu), giải nén DB trước lần chạy đầu.
+
+### D54 — Điện thoại: thanh tab đáy kiểu app, nhận diện điện thoại ở server (2026-10-12)
+- ≤640px: 5 tab cấp trang thành thanh điều hướng cố định ở đáy, icon + tên ngắn (BCTC · Định giá · CTCK ·
+  Cổ tức · VN100); chỉ chọn tab con trực tiếp của khối nội dung (tab lồng không đổi). Bấm tab → cuộn về đầu
+  nội dung tab (`st.html(..., unsafe_allow_javascript=True)`, chỉ gửi cho điện thoại).
+- `valuation/views/device.py`: `is_phone()` = "Mobi" trong User-Agent (MDN; iPad/tablet Android = desktop);
+  `phone_collapsible(label)` (điện thoại: expander đóng; desktop: container không khung → như cũ);
+  `render_alerts` (điện thoại: 2 cảnh báo nặng nhất, còn lại gom vào "Cảnh báo khác (N)" — không xoá cảnh báo).
+
+### D55 — Tab VN100 làm lại: xếp hạng theo upside mô hình + 5 mã tích sản (2026-10-12, người dùng chọn)
+- Bảng toàn VN100: hạng theo upside = giá trị hợp lý (đợt định giá VN100 mới nhất) ÷ giá đóng cửa mới nhất − 1;
+  mã chưa định giá được ở cuối (không có hạng). Bỏ hai chiến lược, AI, thẻ chi tiết, lịch sử… (rườm rà).
+- 5 mã tích sản (người dùng chọn "Top 5 upside có lọc chất lượng"): loại cờ trong `blocking_flags` +
+  CORPORATE_ACTION_UNDATED/MATERIAL_EVENT_HOLD (số cp/sự kiện chưa tin được), upside > `max_upside_pct` (rà soát),
+  GTGD TB 20 phiên < `scales.min_traded_value_vnd`; tối đa `max_per_sector` mã/ngành. Đợt 06/10 + giá 09/10:
+  DBC, NT2, MBB, FPT, DCM. Sàng lọc theo mô hình, không phải khuyến nghị.
+- Lỗi gốc phát hiện: cột `prices_daily.value` luôn trống (vnstock không trả) → engine xếp hạng cũ
+  (`investment_snapshot.py:210`) đánh "thanh khoản không đạt" cho MỌI mã. Tab mới ước lượng GTGD = giá đóng cửa ×
+  khối lượng (gần đúng, không phải VWAP). Engine chưa sửa — chờ duyệt.
+- Mở tab Cổ tức / VN100 → CSS ẩn khối định giá phía trên thanh tab (`st.container(key="valuation_head")`).
+- (D54 bổ sung) Điện thoại thu gọn: bảng KQKD/CĐKT/kiểm tra cân đối, báo cáo AI nháp, quan điểm & kịch bản,
+  phương pháp & khoảng giá, biểu đồ kỹ thuật, waterfall, heatmap độ nhạy, dự phóng 5 năm, consensus chi tiết,
+  lưu/xuất báo cáo, giá mục tiêu từng CTCK, luận điểm CTCK, lịch quyền VN100; khung chỉ số vĩ mô sidebar; tin vĩ mô
+  đóng sẵn. Luôn hiện: thẻ khuyến nghị, nút DeepSeek, biểu đồ tổng quan, bảng kịch bản, KPI CTCK + kết luận hiệu
+  chuẩn, sự kiện quyền sắp tới, bảng xếp hạng + 5 mã tích sản. Cảnh báo info/success không bao giờ chiếm ô hiện ngay.

@@ -14,6 +14,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
+from valuation.views.device import is_phone, phone_collapsible, render_alerts
 from valuation.views.theme import (
     render_app_theme,
     render_shell_header,
@@ -153,11 +154,12 @@ try:
             freshness_headline, freshness_details = describe_data_freshness(
                 freshness_status
             )
-            st.info(
-                f"**{freshness_headline}.** {freshness_details} "
-                "Dùng nút cập nhật ở thanh bên (điện thoại: nút « Chọn mã · Vĩ mô ») khi cần.",
-                icon="⚠️",
-            )
+            with phone_collapsible("Dữ liệu cần cập nhật"):
+                st.info(
+                    f"**{freshness_headline}.** {freshness_details} "
+                    "Dùng nút cập nhật ở thanh bên (điện thoại: nút « Chọn mã · Vĩ mô ») khi cần.",
+                    icon="⚠️",
+                )
         st.session_state["auto_weekly_check_done"] = True
 
     # Render sidebar
@@ -278,8 +280,11 @@ try:
             from valuation.engine.decision_engine import recommend
 
             decision = recommend(
-                scenario_company.ticker, scenario_company.current_price, blended_fv,
-                governance=scenario_company.governance, macro_env=macro_env,
+                scenario_company.ticker,
+                scenario_company.current_price,
+                blended_fv,
+                governance=scenario_company.governance,
+                macro_env=macro_env,
                 not_rated=bool(_res.get("not_rated")),
             )
             rec = decision["recommendation"]
@@ -295,92 +300,154 @@ try:
         if not _res.get("publication_allowed", True):
             rec = "NOT_RATED"
 
-        # Hiển thị các cảnh báo Model Integrity (nếu có)
-        if scenario_company.warnings:
-            st.warning("⚠️ **Cảnh báo tính toàn vẹn mô hình (Model Integrity):**")
-            for warn in scenario_company.warnings:
-                st.error(f"- {warn}")
+        # Khối định giá (thẻ khuyến nghị + cảnh báo + cờ): CSS ẩn khi đang mở tab Cổ tức / VN100
+        # để 2 tab không liên quan định giá hiển thị gọn (D55).
+        with st.container(key="valuation_head"):
+            phone = is_phone()
+            # Hiển thị các cảnh báo Model Integrity (nếu có); điện thoại gom vào danh sách cảnh báo bên dưới (D54).
+            if scenario_company.warnings and not phone:
+                st.warning("⚠️ **Cảnh báo tính toàn vẹn mô hình (Model Integrity):**")
+                for warn in scenario_company.warnings:
+                    st.error(f"- {warn}")
 
-        # 3. Hiển thị Summary Banner (Premium Styling)
-        # NOT_RATED phải TRUNG TÍNH (xám), không tô đỏ: "chưa đủ cơ sở định giá"
-        # hoàn toàn khác "khuyến nghị bán" — tô đỏ sẽ khiến người đọc hiểu nhầm
-        # thành tín hiệu tiêu cực (D28).
-        if rec == "NOT_RATED":
-            rec_color, bg_color, text_color = "#64748B", "#F8FAFC", "#334155"
-        elif rec == "BUY":
-            rec_color, bg_color, text_color = "#00B74F", "#F1FBF5", "#00843D"
-        elif rec in ["HOLD", "TRIM"]:
-            rec_color, bg_color, text_color = "#F59E0B", "#FFFBEB", "#92400E"
-        else:
-            rec_color, bg_color, text_color = "#EF4444", "#FEF2F2", "#991B1B"
+            # 3. Hiển thị Summary Banner (Premium Styling)
+            # NOT_RATED phải TRUNG TÍNH (xám), không tô đỏ: "chưa đủ cơ sở định giá"
+            # hoàn toàn khác "khuyến nghị bán" — tô đỏ sẽ khiến người đọc hiểu nhầm
+            # thành tín hiệu tiêu cực (D28).
+            if rec == "NOT_RATED":
+                rec_color, bg_color, text_color = "#64748B", "#F8FAFC", "#334155"
+            elif rec == "BUY":
+                rec_color, bg_color, text_color = "#00B74F", "#F1FBF5", "#00843D"
+            elif rec in ["HOLD", "TRIM"]:
+                rec_color, bg_color, text_color = "#F59E0B", "#FFFBEB", "#92400E"
+            else:
+                rec_color, bg_color, text_color = "#EF4444", "#FEF2F2", "#991B1B"
 
-        # Với NOT_RATED, KHÔNG hiển thị giá mục tiêu và upside — đó chính là con
-        # số hệ thống vừa tuyên bố là không đáng tin. Hiện nó ra rồi dán nhãn
-        # "không định giá được" là tự mâu thuẫn, và người đọc sẽ nhớ con số.
-        if rec == "NOT_RATED":
-            _headline = "CHƯA ĐỦ CƠ SỞ ĐỊNH GIÁ"
-            _right = (
-                "<div class='ag-summary-upside' style='font-size:18px;color:#64748B;'>"
-                "Không công bố giá mục tiêu</div>"
+            # Với NOT_RATED, KHÔNG hiển thị giá mục tiêu và upside — đó chính là con
+            # số hệ thống vừa tuyên bố là không đáng tin. Hiện nó ra rồi dán nhãn
+            # "không định giá được" là tự mâu thuẫn, và người đọc sẽ nhớ con số.
+            if rec == "NOT_RATED":
+                _headline = "CHƯA ĐỦ CƠ SỞ ĐỊNH GIÁ"
+                _right = (
+                    "<div class='ag-summary-upside' style='font-size:18px;color:#64748B;'>"
+                    "Không công bố giá mục tiêu</div>"
+                )
+            else:
+                from valuation.engine.decision_engine import REC_LABELS_VI
+
+                _headline = f"{REC_LABELS_VI.get(rec, rec)} · Giá mục tiêu {blended_fv:,.0f} VND"
+                _right = f"<div class='ag-summary-upside'>So với thị giá: {upside:+.1f}%</div>"
+
+            render_summary_banner(
+                ticker=scenario_company.ticker,
+                sector=scenario_company.sector,
+                headline=_headline,
+                current_price=scenario_company.current_price,
+                right_html=_right,
+                accent_color=rec_color,
+                bg_color=bg_color,
+                text_color=text_color,
             )
-        else:
-            from valuation.engine.decision_engine import REC_LABELS_VI
-
-            _headline = f"{REC_LABELS_VI.get(rec, rec)} · Giá mục tiêu {blended_fv:,.0f} VND"
-            _right = (
-                f"<div class='ag-summary-upside'>So với thị giá: {upside:+.1f}%</div>"
-            )
-
-        render_summary_banner(
-            ticker=scenario_company.ticker,
-            sector=scenario_company.sector,
-            headline=_headline,
-            current_price=scenario_company.current_price,
-            right_html=_right,
-            accent_color=rec_color,
-            bg_color=bg_color,
-            text_color=text_color,
-        )
-        if rec == "NOT_RATED":
-            st.warning(
-                "Chưa công bố giá mục tiêu: dữ liệu đầu vào chưa đạt kiểm tra "
-                "hoặc mô hình còn thiếu dữ liệu chuyên ngành.",
-                icon="🚫",
-            )
-            for issue in _res.get("data_checks", []):
-                if issue["severity"] == "error":
-                    st.error(issue["message"])
-
-        # Hard Gates & Governance Section
-        violations = decision.get("hard_gates_violations", [])
-        if violations:
-            st.error("🚨 **HARD GATES BỊ VI PHẠM (Chỉ định: HARD REJECT)**")
-            for v in violations:
-                st.markdown(f"- {v}")
-        else:
-            st.success(
-                "✅ **Governance Check Passed** (Không phát hiện cờ rủi ro Hard Gates)"
+            # Cờ định giá (giải thích TẠI SAO kết quả bất thường — vd Giá MT = 0,
+            # upside -100% — thay vì để người dùng tưởng nhầm là lỗi hệ thống).
+            from valuation.engine.flag_descriptions import (
+                FLAG_DESCRIPTIONS,
+                describe_flags,
             )
 
-        st.markdown(
-            f"**Margin of Safety (MOS) Mục tiêu cho {decision.get('business_nature', 'Unknown')}:** {decision.get('target_mos', 0)*100:.0f}%"
-        )
+            violations = decision.get("hard_gates_violations", [])
+            valuation_flags = describe_flags(_res.get("flags", []))
+            if phone:
+                # D54: cùng mức thì theo thứ tự: hard gates → NOT_RATED/lỗi dữ liệu → cờ → toàn vẹn mô hình.
+                alerts = []
+                if violations:
+                    alerts.append(
+                        (
+                            "error",
+                            "🚨 **HARD GATES BỊ VI PHẠM (Chỉ định: HARD REJECT)**\n"
+                            + "\n".join(f"- {v}" for v in violations),
+                            None,
+                        )
+                    )
+                if rec == "NOT_RATED":
+                    alerts.append(
+                        (
+                            "warning",
+                            (
+                                "Chưa công bố giá mục tiêu: dữ liệu đầu vào chưa đạt kiểm tra "
+                                "hoặc mô hình còn thiếu dữ liệu chuyên ngành."
+                            ),
+                            "🚫",
+                        )
+                    )
+                    alerts += [
+                        ("error", i["message"], None)
+                        for i in _res.get("data_checks", [])
+                        if i["severity"] == "error"
+                    ]
+                icons = {"error": "🚨", "warning": "⚠️"}
+                alerts += [
+                    (
+                        vf["level"] if vf["level"] in icons else "info",
+                        f"`{vf['code']}` — {vf['message']}",
+                        icons.get(vf["level"], "ℹ️"),
+                    )
+                    for vf in valuation_flags
+                ]
+                # Mã đã có mô tả: cờ cùng mã ở trên đã mang đúng mức → bản văn bản thô chỉ là bản trùng.
+                alerts += [
+                    (
+                        (
+                            "info"
+                            if str(w).split(":", 1)[0].strip() in FLAG_DESCRIPTIONS
+                            else "warning"
+                        ),
+                        f"Model Integrity — {w}",
+                        None,
+                    )
+                    for w in scenario_company.warnings
+                ]
+                render_alerts(alerts)
+                st.caption(
+                    ("" if violations else "✅ Không vi phạm Hard Gates · ")
+                    + f"MOS mục tiêu ({decision.get('business_nature', 'Unknown')}): "
+                    f"{decision.get('target_mos', 0) * 100:.0f}%"
+                )
+            else:
+                if rec == "NOT_RATED":
+                    st.warning(
+                        "Chưa công bố giá mục tiêu: dữ liệu đầu vào chưa đạt kiểm tra "
+                        "hoặc mô hình còn thiếu dữ liệu chuyên ngành.",
+                        icon="🚫",
+                    )
+                    for issue in _res.get("data_checks", []):
+                        if issue["severity"] == "error":
+                            st.error(issue["message"])
 
-        # Cờ định giá (giải thích TẠI SAO kết quả bất thường — vd Giá MT = 0,
-        # upside -100% — thay vì để người dùng tưởng nhầm là lỗi hệ thống).
-        from valuation.engine.flag_descriptions import describe_flags
-
-        valuation_flags = describe_flags(_res.get("flags", []))
-        if valuation_flags:
-            st.markdown("**Cờ định giá (Valuation Flags):**")
-            for vf in valuation_flags:
-                text = f"`{vf['code']}` — {vf['message']}"
-                if vf["level"] == "error":
-                    st.error(text, icon="🚨")
-                elif vf["level"] == "warning":
-                    st.warning(text, icon="⚠️")
+                # Hard Gates & Governance Section
+                if violations:
+                    st.error("🚨 **HARD GATES BỊ VI PHẠM (Chỉ định: HARD REJECT)**")
+                    for v in violations:
+                        st.markdown(f"- {v}")
                 else:
-                    st.info(text, icon="ℹ️")
+                    st.success(
+                        "✅ **Governance Check Passed** (Không phát hiện cờ rủi ro Hard Gates)"
+                    )
+
+                st.markdown(
+                    f"**Margin of Safety (MOS) Mục tiêu cho {decision.get('business_nature', 'Unknown')}:** {decision.get('target_mos', 0)*100:.0f}%"
+                )
+
+                if valuation_flags:
+                    st.markdown("**Cờ định giá (Valuation Flags):**")
+                    for vf in valuation_flags:
+                        text = f"`{vf['code']}` — {vf['message']}"
+                        if vf["level"] == "error":
+                            st.error(text, icon="🚨")
+                        elif vf["level"] == "warning":
+                            st.warning(text, icon="⚠️")
+                        else:
+                            st.info(text, icon="ℹ️")
 
         from valuation.config import load_defaults
         from valuation.data_access.corporate_actions import (

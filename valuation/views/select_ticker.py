@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from valuation.data_access.repo import build_company_data
 from valuation.db.models import Ticker
+from valuation.views.device import is_phone
 
 _UI_HANDLED_EXCEPTIONS = (
     SQLAlchemyError,
@@ -153,7 +154,7 @@ def render_select_ticker(db_read: Session, db_write: Session = None):
     st.sidebar.markdown("---")
 
     # --- Bảng tin Vĩ mô (Macro News) ---
-    with st.sidebar.expander("Tin vĩ mô 24h (AI tóm tắt)", expanded=True):
+    with st.sidebar.expander("Tin vĩ mô 24h (AI tóm tắt)", expanded=not is_phone()):
         # Chỉ kiểm tra nguồn/AI khi người dùng chủ động bấm.
         if st.button("Làm mới tin tức", width="stretch"):
             with st.spinner("AI đang tổng hợp tin..."):

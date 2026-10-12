@@ -32,8 +32,34 @@ def _theme_css() -> str:
     return "\n".join(fonts) + (assets / "workspace.css").read_text(encoding="utf-8")
 
 
+# Thanh tab đáy trên điện thoại (D54): bấm tab thì cuộn về đầu nội dung tab như app, thay vì giữ
+# nguyên vị trí cuộn của tab trước. Gắn một lần mỗi trang (cờ trên window), chỉ khi màn ≤640px.
+_TAB_SCROLL_JS = """<script>
+(() => {
+  if (window.__agTabTop) return;
+  window.__agTabTop = true;
+  const SEL = '.stMainBlockContainer > [data-testid="stVerticalBlock"] > [data-testid="stTabs"]';
+  document.addEventListener('click', (e) => {
+    const tab = e.target.closest(SEL + ' > div > div > [role="tablist"] > [role="tab"]');
+    if (!tab || !window.matchMedia('(max-width: 640px)').matches) return;
+    const main = document.querySelector('[data-testid="stMain"]');
+    const tabs = tab.closest(SEL);
+    if (!main || !tabs) return;
+    requestAnimationFrame(() => {
+      const top = main.scrollTop + tabs.getBoundingClientRect().top - main.getBoundingClientRect().top - 8;
+      if (main.scrollTop > top) main.scrollTo({ top });
+    });
+  }, true);
+})();
+</script>"""
+
+
 def render_app_theme() -> None:
+    from valuation.views.device import is_phone
+
     st.markdown(f"<style>{_theme_css()}</style>", unsafe_allow_html=True)
+    if is_phone():
+        st.html(_TAB_SCROLL_JS, unsafe_allow_javascript=True)
 
 
 def render_shell_header() -> None:

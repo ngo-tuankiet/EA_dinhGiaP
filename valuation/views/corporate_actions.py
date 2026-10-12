@@ -26,6 +26,7 @@ from valuation.data_access.corporate_actions import (
 from valuation.db.models import PricesDaily
 from valuation.ingest.corporate_actions import refresh_corporate_actions
 from valuation.services.ranking_store import latest_snapshot
+from valuation.views.device import phone_collapsible
 
 _VN_TZ = datetime.timezone(datetime.timedelta(hours=7))
 
@@ -904,8 +905,9 @@ def render_corporate_actions(
             "diễn biến sau khoảng 1 tuần/1 tháng."
         )
 
-    _render_vn100_upcoming_calendar(
-        db=db,
-        today=today,
-        future_days=int(cfg.get("market_upcoming_days", 30)),
-    )
+    with phone_collapsible("Lịch quyền VN100 sắp tới"):
+        _render_vn100_upcoming_calendar(
+            db=db,
+            today=today,
+            future_days=int(cfg.get("market_upcoming_days", 30)),
+        )

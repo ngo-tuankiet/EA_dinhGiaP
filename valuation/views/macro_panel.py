@@ -173,6 +173,7 @@ def render_macro_panel(db) -> None:
     import streamlit as st
 
     from valuation.config import get_macro_series_registry, load_defaults
+    from valuation.views.device import phone_collapsible
 
     cfg = load_defaults().get("macro_dashboard") or {}
     freqs = {
@@ -182,51 +183,52 @@ def render_macro_panel(db) -> None:
     today = datetime.datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()
 
     st.sidebar.header("Chỉ số vĩ mô")
-    for i, (code, label, kind) in enumerate(PANEL):
-        if i % 2 == 0:  # mỗi cặp một hàng mới để 2 cột thẳng hàng
-            cols = st.sidebar.columns(2)
-        obs = snap.get(code)
-        col = cols[i % 2]
-        if obs is None:
-            col.metric(label, "—", help="Chưa có dữ liệu — bấm Cập nhật vĩ mô")
-            continue
-        value, delta = _fmt_value(obs, kind)
-        if code == "FED_FUNDS_UPPER" and "FED_FUNDS_LOWER" in snap:
-            low = f"{snap['FED_FUNDS_LOWER'].value * 100:.2f}".replace(".", ",")
-            value = f"{low}–{value}"
-        stale = is_stale(obs, cfg, today)
-        col.metric(
-            label,
-            value,
-            delta,
-            delta_color="off",
-            help=f"Ngày số liệu {obs.date:%d/%m/%Y}" + (" — ĐÃ CŨ" if stale else ""),
+    # D54: điện thoại thu gọn chỉ số; trong khối `with` phải gọi st.* (st.sidebar.* bỏ qua context).
+    with st.sidebar, phone_collapsible("Xem chỉ số & nhận định"):
+        for i, (code, label, kind) in enumerate(PANEL):
+            if i % 2 == 0:  # mỗi cặp một hàng mới để 2 cột thẳng hàng
+                cols = st.columns(2)
+            obs = snap.get(code)
+            col = cols[i % 2]
+            if obs is None:
+                col.metric(label, "—", help="Chưa có dữ liệu — bấm Cập nhật vĩ mô")
+                continue
+            value, delta = _fmt_value(obs, kind)
+            if code == "FED_FUNDS_UPPER" and "FED_FUNDS_LOWER" in snap:
+                low = f"{snap['FED_FUNDS_LOWER'].value * 100:.2f}".replace(".", ",")
+                value = f"{low}–{value}"
+            stale = is_stale(obs, cfg, today)
+            col.metric(
+                label,
+                value,
+                delta,
+                delta_color="off",
+                help=f"Ngày số liệu {obs.date:%d/%m/%Y}"
+                + (" — ĐÃ CŨ" if stale else ""),
+            )
+            col.caption(("⚠️ cũ · " if stale else "") + f"{obs.date:%d/%m/%Y}")
+
+        takes = quick_takes(snap, cfg, today)
+        if takes:
+            st.markdown("**Nhận định nhanh**\n" + "\n".join(f"- {t}" for t in takes))
+        st.caption(
+            "Suy ra từ số liệu trên theo quy tắc cố định; không phải khuyến nghị đầu tư."
         )
-        col.caption(("⚠️ cũ · " if stale else "") + f"{obs.date:%d/%m/%Y}")
 
-    takes = quick_takes(snap, cfg, today)
-    if takes:
-        st.sidebar.markdown(
-            "**Nhận định nhanh**\n" + "\n".join(f"- {t}" for t in takes)
-        )
-    st.sidebar.caption(
-        "Suy ra từ số liệu trên theo quy tắc cố định; không phải khuyến nghị đầu tư."
-    )
+        notice = st.session_state.pop("macro_refresh_notice", None)
+        if notice:
+            msgs, errors = notice
+            if msgs:
+                st.success("Đã cập nhật · " + " · ".join(msgs))
+            for err in errors:
+                st.error(f"Lỗi nguồn {err}")
 
-    notice = st.session_state.pop("macro_refresh_notice", None)
-    if notice:
-        msgs, errors = notice
-        if msgs:
-            st.sidebar.success("Đã cập nhật · " + " · ".join(msgs))
-        for err in errors:
-            st.sidebar.error(f"Lỗi nguồn {err}")
-
-    if st.sidebar.button(
-        "Cập nhật vĩ mô",
-        width="stretch",
-        help="Lấy lãi suất Fed, TPCP Mỹ 10Y (FRED), tỷ giá, dầu (yfinance), VN-Index (vnstock). CPI/SBV cập nhật qua CSV.",
-    ):
-        _refresh(st)
+        if st.button(
+            "Cập nhật vĩ mô",
+            width="stretch",
+            help="Lấy lãi suất Fed, TPCP Mỹ 10Y (FRED), tỷ giá, dầu (yfinance), VN-Index (vnstock). CPI/SBV cập nhật qua CSV.",
+        ):
+            _refresh(st)
 
 
 def _fetch_vnindex(_db) -> int:
