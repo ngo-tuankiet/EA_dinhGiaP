@@ -166,7 +166,10 @@ corporate_actions:
   price_impact_short_sessions: 5
   price_impact_long_sessions: 20
   reaction_materiality_pct: 2.0
-  attractive_dividend_yield_pct: 5.0
+  attractive_dividend_yield_pct: 3.5  # "cổ tức tốt" (người dùng chọn 3,5%, 12/10/2026; trước 5,0)
+  # Giá prices_daily (VCI) đã điều chỉnh cổ tức tiền: 254 lần chia 2023-2026, ngày GDKHQ trung vị −0,24%
+  # (đã trừ VN-Index) so với lý thuyết −2,9% → phân tích lịch sử không cộng cổ tức lần nữa (D57).
+  cash_dividend_prices_adjusted: true
   # Nhận định nhanh lịch quyền VN100 (D56, người dùng chọn 3 tiêu chí): upside mô hình > 0; cổ tức TIỀN MẶT
   # 12 tháng ≥ attractive_dividend_yield_pct và trả đều dividend_consistency_years năm gần nhất; giá điều
   # chỉnh price_impact_long_sessions phiên sau GDKHQ vượt VN-Index ở ≥ dividend_min_hit_rate số lần (≥ min_events).

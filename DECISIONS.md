@@ -1700,3 +1700,11 @@ RI/DCF đầy đủ của Shinhan không so trực tiếp: kỳ đầu 6 tháng 
 - Engine xếp hạng: `traded_values()` — GTGD = `value` hoặc giá đóng cửa × khối lượng (cột value luôn trống);
   có hiệu lực từ lần "Định giá lại VN100" tới. Đợt 12/10, ngưỡng 5%: 11 mã VN100 đạt tiêu chí (2), 26 mã đạt (3);
   17 sự kiện trong 90 ngày tới chưa sự kiện nào đạt 2/3.
+
+### D57 — Ngưỡng cổ tức tốt 3,5%; sửa cộng cổ tức hai lần trong phân tích lịch sử (2026-10-12, người dùng chọn)
+- `attractive_dividend_yield_pct` 5,0 → 3,5 (dùng cho tiêu chí (2) D56 và nhãn đánh giá sự kiện cổ tức sắp tới).
+- `analyze_historical_price_impact(..., cash_dividend_prices_adjusted=True)` theo config
+  `corporate_actions.cash_dividend_prices_adjusted: true` (bằng chứng D56: giá DB đã điều chỉnh cổ tức tiền):
+  tổng tài sản = giá ngày GDKHQ ÷ giá điều chỉnh trước GDKHQ − 1, không cộng cổ tức; giá gốc ước lượng = giá điều
+  chỉnh + cổ tức. Ví dụ FPT 28/05/2026 (1.000 đ): trước −0,41% (sai, cộng hai lần) → sau −1,92%.
+- Test tái hiện lỗi viết trước khi sửa; test ngữ cảnh DeepSeek đổi sang chuỗi giá đã điều chỉnh cho khớp dữ liệu thật.

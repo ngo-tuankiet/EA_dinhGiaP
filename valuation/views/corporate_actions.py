@@ -556,6 +556,9 @@ def _render_historical_analysis(
             float(row.issue_price_vnd) if row.issue_price_vnd is not None else None
         )
         impact = analyze_historical_price_impact(
+            cash_dividend_prices_adjusted=bool(
+                cfg.get("cash_dividend_prices_adjusted", False)
+            ),
             prices=prices,
             event_date=_anchor(row),
             event_type=row.event_type,

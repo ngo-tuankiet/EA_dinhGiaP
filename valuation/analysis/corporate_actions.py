@@ -322,8 +322,12 @@ def analyze_historical_price_impact(
     short_sessions: int = 5,
     long_sessions: int = 20,
     adjusted_series_suspicion_pct: float = 20.0,
+    cash_dividend_prices_adjusted: bool = False,
 ) -> dict[str, Any]:
     """Đo phản ứng giá quanh sự kiện và tách phần điều chỉnh cơ học.
+
+    `cash_dividend_prices_adjusted=True` khi chuỗi giá đã điều chỉnh cổ tức tiền (giá DB/VCI — D57):
+    giá trước GDKHQ đã trừ sẵn cổ tức nên không cộng cổ tức vào tổng tài sản lần nữa.
 
     Đây là event study mô tả, không khẳng định quan hệ nhân quả. Giá trước sự
     kiện là phiên gần nhất trước mốc; giá sự kiện là phiên đầu tiên tại/sau mốc.
@@ -375,7 +379,20 @@ def analyze_historical_price_impact(
     )
     price_series_adjusted = False
     estimated_unadjusted_price_before = None
-    if event_type == "CASH_DIVIDEND" and cash_amount_vnd_per_share is not None:
+    if (
+        event_type == "CASH_DIVIDEND"
+        and cash_amount_vnd_per_share is not None
+        and cash_dividend_prices_adjusted
+    ):
+        # Giá điều chỉnh = giá gốc − cổ tức → so trực tiếp trên cùng mặt bằng sau chia.
+        price_series_adjusted = True
+        estimated_unadjusted_price_before = price_before + float(
+            cash_amount_vnd_per_share
+        )
+        theoretical = price_before
+        market_reaction = _pct(price_event, price_before)
+        wealth_change = _pct(price_event, price_before)
+    elif event_type == "CASH_DIVIDEND" and cash_amount_vnd_per_share is not None:
         wealth_change = _pct(
             price_event + float(cash_amount_vnd_per_share), price_before
         )
@@ -510,10 +527,17 @@ def explain_historical_price_impact(
         )
     elif event_type == "CASH_DIVIDEND":
         cash = float(impact.get("cash_amount_vnd_per_share") or 0.0)
-        wealth_text = (
-            f"Bạn nhận thêm {_fmt_number_vi(cash)} VND tiền mặt cho mỗi cổ phiếu. "
-            f"Sau khi cộng khoản tiền này, tổng tài sản thay đổi {float(wealth):+.1f}%."
-        )
+        if impact.get("price_series_adjusted"):
+            wealth_text = (
+                f"Bạn nhận thêm {_fmt_number_vi(cash)} VND tiền mặt cho mỗi cổ phiếu. "
+                "Vì dữ liệu giá đã điều chỉnh cổ tức, hệ thống không cộng tiền này lần nữa. "
+                f"So trên cùng mặt bằng sau chia, tổng tài sản thay đổi {float(wealth):+.1f}%."
+            )
+        else:
+            wealth_text = (
+                f"Bạn nhận thêm {_fmt_number_vi(cash)} VND tiền mặt cho mỗi cổ phiếu. "
+                f"Sau khi cộng khoản tiền này, tổng tài sản thay đổi {float(wealth):+.1f}%."
+            )
     elif event_type in _SHARE_GRANT_TYPES:
         ratio = float(impact.get("exercise_ratio") or 0.0) * 100.0
         if impact.get("price_series_adjusted"):

@@ -479,8 +479,9 @@ def test_deepseek_context_contains_only_traceable_events(db):
 
 def test_deepseek_context_includes_traceable_historical_price_reaction(db):
     upsert_corporate_actions(db, [normalize_vci_event(_vci_cash_event(), ticker="AAA")])
+    # Giá DB đã điều chỉnh cổ tức (D57): trước GDKHQ 30.000 gốc − 1.500 cổ tức = 28.500.
     prices = [
-        (datetime.date(2026, 3, 18), 30_000),
+        (datetime.date(2026, 3, 18), 28_500),
         (datetime.date(2026, 3, 19), 28_600),
         (datetime.date(2026, 3, 20), 28_900),
     ]
@@ -508,9 +509,33 @@ def test_deepseek_context_includes_traceable_historical_price_reaction(db):
     )
 
     reaction = context["events"][0]["historical_price_impact"]
-    assert reaction["price_before_vnd"] == 30_000
+    assert reaction["price_before_vnd"] == 28_500
+    assert reaction["estimated_unadjusted_price_before_vnd"] == 30_000
     assert reaction["market_reaction_vs_theoretical_pct"] == pytest.approx(
         28_600 / 28_500 * 100 - 100
     )
     explanation = context["events"][0]["historical_explanation"]
     assert explanation["reaction_label"] == "TỔNG TÀI SẢN GẦN NHƯ KHÔNG ĐỔI"
+
+
+def test_cash_dividend_on_adjusted_prices_is_not_counted_twice():
+    # Giá DB đã điều chỉnh cổ tức: trước GDKHQ 95 (gốc 100), ngày GDKHQ 95, cổ tức 5 đ.
+    # Cổ đông: 100 → 95 + 5 tiền = 0%. Cách cũ cộng thêm 5 vào giá đã điều chỉnh → +5,3% (sai).
+    prices = [
+        {"date": datetime.date(2026, 5, 27), "close": 95},
+        {"date": datetime.date(2026, 5, 28), "close": 95},
+    ]
+    impact = analyze_historical_price_impact(
+        prices=prices,
+        event_date=datetime.date(2026, 5, 28),
+        event_type="CASH_DIVIDEND",
+        cash_amount_vnd_per_share=5,
+        cash_dividend_prices_adjusted=True,
+    )
+    assert impact["shareholder_wealth_change_pct"] == pytest.approx(0.0)
+    assert impact["price_series_adjusted"] is True
+    assert impact["estimated_unadjusted_price_before_vnd"] == pytest.approx(100.0)
+    text = explain_historical_price_impact(
+        event_type="CASH_DIVIDEND", impact=impact, reaction_materiality_pct=2.0
+    )["wealth_explanation"]
+    assert "không cộng tiền này lần nữa" in text

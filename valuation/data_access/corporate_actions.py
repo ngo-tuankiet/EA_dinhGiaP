@@ -264,6 +264,9 @@ def corporate_actions_context(
         historical_price_impact = None
         if anchor and anchor <= as_of and row.event_type in _PRICE_IMPACT_TYPES:
             historical_price_impact = analyze_historical_price_impact(
+                cash_dividend_prices_adjusted=bool(
+                    cfg.get("cash_dividend_prices_adjusted", False)
+                ),
                 prices=prices,
                 event_date=anchor,
                 event_type=row.event_type,
