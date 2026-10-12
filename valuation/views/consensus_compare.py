@@ -354,9 +354,8 @@ def render_consensus_compare(
                     synth["doi_chieu_noi_bo"],
                 )
         else:
-            st.info(
-                "Chưa có bản AI tổng hợp cho mã này. Dùng nút **Kiểm chứng dữ liệu & "
+            st.caption(  # ghi chú trung tính, không phải cảnh báo (D58)
+                "🤖 Chưa có bản AI tổng hợp cho mã này. Dùng nút **Kiểm chứng dữ liệu & "
                 "sinh báo cáo qua DeepSeek** ở tab BCTC; cùng một lượt sẽ tạo luôn "
-                "phần tổng hợp CTCK tại đây.",
-                icon="🤖",
+                "phần tổng hợp CTCK tại đây."
             )

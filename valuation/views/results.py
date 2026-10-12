@@ -855,6 +855,7 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
         report_sections = build_report_sections(company, blended_fv, db=db_write)
 
         # Tạo các ảnh biểu đồ tạm để chuẩn bị nhúng
+        chart_export_errors: list[str] = []
         try:
             generate_football_field_chart(
                 blended_fv, company.current_price, int_fv, rel_fv, chart_football_path
@@ -863,7 +864,7 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
                 matrix, x_labels, y_labels, is_bank, chart_heatmap_path
             )
         except _VIEW_HANDLED_EXCEPTIONS as e:
-            st.warning(f"Không thể tạo ảnh tĩnh biểu đồ cho báo cáo: {e}")
+            chart_export_errors.append(str(e))
 
         # Trích xuất bảng dự phóng chi tiết để đưa vào HTML & Word
         from valuation.engine.forecast import forecast_company_financials
@@ -964,7 +965,14 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
                 output_path=chart_profit_path,
             )
         except _VIEW_HANDLED_EXCEPTIONS as e:
-            st.warning(f"Không thể tạo biểu đồ tài chính lịch sử: {e}")
+            chart_export_errors.append(str(e))
+        if chart_export_errors:
+            # Một dòng thay cho 2 hộp vàng mỗi lần mở mã (D58). Gốc thường gặp: chưa cài kaleido
+            # (Plotly cần để xuất ảnh tĩnh) → PDF/Word vẫn xuất, chỉ thiếu ảnh biểu đồ.
+            st.caption(
+                "Ảnh biểu đồ tĩnh cho PDF/Word chưa tạo được — báo cáo vẫn xuất nhưng không kèm "
+                f"biểu đồ. Chi tiết: {chart_export_errors[0][:120]}"
+            )
 
         # Không gọi DeepSeek tại tab này. Chỉ dùng lại kết quả đã sinh từ nút duy
         # nhất ở tab BCTC để tránh phát sinh thêm chi phí API.
@@ -981,7 +989,7 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
                 "Văn bản AI đã được kiểm chứng tại tab BCTC và sẽ được dùng lại, không gọi API thêm."
             )
         else:
-            st.info(
+            st.caption(  # ghi chú trung tính, không phải cảnh báo (D58)
                 "Chưa có nháp AI. Hãy dùng nút kiểm chứng và sinh báo cáo tại tab BCTC trước khi xuất."
             )
 

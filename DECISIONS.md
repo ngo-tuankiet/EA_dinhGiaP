@@ -1708,3 +1708,13 @@ RI/DCF đầy đủ của Shinhan không so trực tiếp: kỳ đầu 6 tháng 
   tổng tài sản = giá ngày GDKHQ ÷ giá điều chỉnh trước GDKHQ − 1, không cộng cổ tức; giá gốc ước lượng = giá điều
   chỉnh + cổ tức. Ví dụ FPT 28/05/2026 (1.000 đ): trước −0,41% (sai, cộng hai lần) → sau −1,92%.
 - Test tái hiện lỗi viết trước khi sửa; test ngữ cảnh DeepSeek đổi sang chuỗi giá đã điều chỉnh cho khớp dữ liệu thật.
+
+### D58 — Gọn cảnh báo trên mọi thiết bị (2026-10-13, người dùng yêu cầu)
+- Kiểm tra toàn dự án: 645 test pass; mở app 7 mã (FPT, VCB, HPG, SSI, NVL, PNJ, GEX) × 5 tab: 0 exception.
+- Đầu trang: bỏ nhánh desktop hiện tất cả; mọi thiết bị dùng `render_alerts` — tối đa 2 cảnh báo error/warning,
+  còn lại vào "Cảnh báo khác (N)"; governance + MOS thành 1 dòng chú thích. PNJ: 6 hộp → 2; FPT: 2 → 0.
+- `render_alerts` gom trên mọi thiết bị → cờ trùng ở tab Định giá/CTCK/BCTC tự gom (đầu trang đã hiện).
+- Ghi chú trung tính chuyển sang `st.caption` (chưa có nháp AI, chưa có bản AI tổng hợp CTCK, chưa có sự kiện
+  12 tháng, BCĐKT cân đối). Không xoá cảnh báo lỗi dữ liệu nào.
+- 2 cảnh báo `write_image` mỗi lần mở mã → 1 dòng chú thích. Gốc: chưa cài `kaleido` (Plotly xuất ảnh tĩnh)
+  → PDF/Word không kèm ảnh biểu đồ; cài kaleido là dependency mới, chờ duyệt.

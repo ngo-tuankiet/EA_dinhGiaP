@@ -909,7 +909,7 @@ def render_corporate_actions(
         "Chỉ hiển thị sự kiện đã có công bố và ngày thực hiện.",
     )
     if not upcoming_rows:
-        st.info(
+        st.caption(  # ghi chú trung tính, không phải cảnh báo (D58)
             "Hiện chưa có sự kiện cổ tức, quyền mua hoặc tăng vốn nào trong 12 tháng tới "
             "đã được nguồn dữ liệu công bố. Điều này không có nghĩa doanh nghiệp chắc chắn sẽ không phát sinh sự kiện mới."
         )

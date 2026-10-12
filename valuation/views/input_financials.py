@@ -1043,7 +1043,4 @@ def render_input_financials(
             for warn in warnings:
                 st.warning(warn, icon="⚠️")
         else:
-            st.success(
-                "Bảng cân đối kế toán (Lịch sử & Dự phóng) hoàn toàn cân đối!",
-                icon="✅",
-            )
+            st.caption("✅ Bảng cân đối kế toán (lịch sử & dự phóng) cân đối.")  # D58

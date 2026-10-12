@@ -45,10 +45,10 @@ def split_alerts(
 def render_alerts(
     alerts: list[tuple[str, str, str | None]], max_visible: int = 2
 ) -> None:
-    """Desktop: hiện tất cả như cũ. Điện thoại: chỉ `max_visible` cảnh báo nặng nhất, còn lại gom vào
+    """Mọi thiết bị (D58): chỉ `max_visible` cảnh báo error/warning nặng nhất hiện ngay, còn lại gom vào
     một mục đóng sẵn — không xoá cảnh báo nào (lỗi dữ liệu vẫn phải tới được người dùng).
     """
-    shown, rest = split_alerts(alerts, max_visible) if is_phone() else (alerts, [])
+    shown, rest = split_alerts(alerts, max_visible)
     for level, body, icon in shown:
         getattr(st, level)(body, icon=icon)
     if rest:
