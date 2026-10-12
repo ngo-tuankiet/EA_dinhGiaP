@@ -1,0 +1,81 @@
+# Bản đồ 25 nhóm ngành sang mô hình định giá v1.0
+mapping:
+  "Ngân hàng":
+    model: bank
+    is_conglomerate: false
+  "Chứng khoán":
+    model: securities
+    is_conglomerate: false
+  "Bảo hiểm phi nhân thọ":
+    model: insurance
+    is_conglomerate: false
+  "Bảo hiểm nhân thọ":
+    model: insurance_life
+    is_conglomerate: false
+  "BĐS nhà ở":
+    model: real_estate
+    is_conglomerate: false
+  "BĐS khu công nghiệp":
+    model: real_estate_kcn
+    is_conglomerate: false
+  "Xây dựng":
+    model: construction
+    is_conglomerate: false
+  "Vật liệu xây dựng":
+    model: steel
+    is_conglomerate: false
+  "Thép":
+    model: steel
+    is_conglomerate: false
+  "Hóa chất":
+    model: non_financial
+    is_conglomerate: false
+  "Dầu khí thượng nguồn":
+    model: non_financial
+    is_conglomerate: false
+  "Dầu khí trung/hạ nguồn & phân phối":
+    model: non_financial
+    is_conglomerate: false
+  "Điện":
+    model: electricity
+    is_conglomerate: false
+  "Nước & môi trường":
+    model: electricity
+    is_conglomerate: false
+  "Bán lẻ":
+    model: non_financial
+    is_conglomerate: false
+  "Hàng tiêu dùng thiết yếu / F&B":
+    model: non_financial
+    is_conglomerate: false
+  "Thủy sản / Nông nghiệp xuất khẩu":
+    model: non_financial
+    is_conglomerate: false
+  "Công nghệ / Phần mềm":
+    model: non_financial
+    is_conglomerate: false
+  "Viễn thông":
+    model: non_financial
+    is_conglomerate: false
+  "Cảng biển & Logistics":
+    model: non_financial
+    is_conglomerate: false
+  "Vận tải biển":
+    model: non_financial
+    is_conglomerate: false
+  "Hàng không":
+    model: non_financial
+    is_conglomerate: false
+  "Dược phẩm / Y tế":
+    model: non_financial
+    is_conglomerate: false
+  "Đa ngành / Holdings":
+    model: sotp
+    is_conglomerate: true
+  "Khai khoáng / Cao su tự nhiên":
+    model: non_financial
+    is_conglomerate: false
+  # Fallback mặc định
+  "default":
+    model: non_financial
+    is_conglomerate: false

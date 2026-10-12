@@ -1,0 +1,65 @@
+.env
+*.env
+secrets/
+*service-account*.json
+*.pem
+*.key
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+n8n_data/
+vn100_valuations.csv
+GoogleDrive-*/
+
+# Caches công cụ
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts
+*.egg-info/
+
+# Log & output tạm
+*.log
+temp_reports/
+logs/
+backups/
+
+# Scratch: script debug/thăm dò một lần, không phải nguồn sự thật
+scratch/
+
+# File nội dung sinh tự động từ docx/xlsx (dùng để đọc, không version)
+*_content.txt
+
+# Scratch/debug ở GỐC repo (test thật nằm trong tests/). Không version.
+/test_*.py
+/fix_*.py
+/fix_*.sh
+*.pdf
+test_output.txt
+.macro_bulletin_cache.json
+.deepseek_report_cache/
+.vn100_ranking/
+.data_update/
+VN100_Valuation_Results.csv
+compare_table.md
+.streamlit/secrets.toml
+
+# Build artifacts (PyInstaller) & DB backups
+build/
+dist/
+*.spec
+*.sql
+*.db
+*.sqlite
+*.sqlite3
+vn100_backup.sql
+
+# Báo cáo PDF CTCK tải nội bộ (bản quyền — không commit/phát tán)
+reports_pdf/
+*.pdf
+reports/broker_pdfs/
+# Bảng định giá xuất ra có tiêu đề/link báo cáo CTCK — chỉ lưu nội bộ
+reports/*.xlsx

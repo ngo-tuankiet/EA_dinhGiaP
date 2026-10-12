@@ -1,0 +1,70 @@
+version: accumulation-v1
+timezone: Asia/Ho_Chi_Minh
+schedule: {weekday: 1, hour: 9, minute: 30}
+max_picks: 7
+max_per_sector: 2
+min_sectors: 3
+candidate_limit: 20
+price_max_age_days: 7
+financial_max_age_days: 200
+evidence_max_age_days: 365
+max_upside_pct: 100
+golden_tolerance: 0.10
+universe_max_age_days: 200
+not_rateable_flags:
+  - NOT_RATED
+  - NOT_RATEABLE
+  - PROXY_IMPLAUSIBLE
+  - VALUATION_PROXY
+  - NEGATIVE_EQUITY_VALUE_DCF
+  - NEGATIVE_EQUITY_VALUE_EV_EBITDA
+min_history_years: 3
+min_coverage: 80
+financial_check_ttl_days: 7
+news_ttl_hours: 24
+news_max_items: 40
+news_max_age_days: 180
+lock_timeout_seconds: 0
+ai_max_output_tokens: 6500
+ai_max_input_chars: 65000
+ai_timeout_seconds: 120
+profiles:
+  defensive:
+    label: Tích sản thận trọng
+    horizon: 3-5 năm; đánh giá lại mỗi quý
+    description: Ưu tiên tài chính vững, dòng tiền bền và giá mua có biên an toàn. Vẫn có thể lỗ vốn.
+    weights: {valuation: 30, quality: 20, safety: 25, moat: 15, context: 5, flow: 5}
+    min_mos: 0.25
+    min_quality: 60
+    min_safety: 65
+  growth:
+    label: Tích sản tăng trưởng
+    horizon: 3-5 năm; kiểm tra động lực 12-24 tháng
+    description: Ưu tiên tăng trưởng bền và lợi thế cạnh tranh; chấp nhận biến động và rủi ro định giá cao hơn.
+    weights: {valuation: 25, quality: 30, safety: 10, moat: 20, context: 10, flow: 5}
+    min_mos: 0.15
+    min_quality: 65
+    min_safety: 45
+scales:
+  roe: [0.0, 0.25]
+  revenue_cagr: [0.0, 0.20]
+  cash_conversion: [0.0, 1.2]
+  debt_to_equity: [2.0, 0.0]
+  npl: [0.05, 0.005]
+  llr: [0.5, 2.0]
+  flow_ratio: [-0.10, 0.10]
+  min_traded_value_vnd: 10000000000
+  min_peer_count: 5
+blocking_flags:
+  - NOT_RATED
+  - NOT_RATEABLE
+  - VALUATION_PROXY
+  - PROXY_IMPLAUSIBLE
+  - UPSIDE_EXTREME_REVIEW
+  - STALE_PRICE
+  - STALE_MACRO_RF
+  - MISSING_MACRO_RF
+news_feeds:
+  - https://cafef.vn/vi-mo-dau-tu.rss
+  - https://cafef.vn/doanh-nghiep.rss
+  - https://vnexpress.net/rss/kinh-doanh.rss

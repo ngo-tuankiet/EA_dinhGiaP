@@ -1,0 +1,17 @@
+consensus:
+  FPT:
+    SSI_Research: 145000.0
+    VCBS: 140000.0
+    HSC: 148000.0
+  HPG:
+    SSI_Research: 32000.0
+    VCBS: 30000.0
+    HSC: 31500.0
+  SSI:
+    SSI_Research: 38000.0
+    VCBS: 36000.0
+    HSC: 39000.0
+  VCB:
+    SSI_Research: 102000.0
+    VCBS: 105000.0
+    HSC: 100000.0

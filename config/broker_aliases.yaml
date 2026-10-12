@@ -1,0 +1,84 @@
+# Chuẩn hoá tên CTCK giữa các nguồn (D24).
+#
+# VÌ SAO CẦN: cùng một công ty chứng khoán xuất hiện dưới nhiều tên tuỳ nguồn —
+# 24hmoney gọi "MIRAE", Simplize gọi "MAS"; 24hmoney "VDSC", Simplize "VDS".
+# Nếu không gộp, một CTCK bị đếm thành 2 phiếu trong median đồng thuận và cột
+# "Số CTCK theo dõi" bị thổi phồng.
+#
+# NGUỒN CỦA BẢNG NÀY: quan sát TRỰC TIẾP giá trị thật trả về từ 2 nguồn ngày
+# 2026-08-11 (24hmoney: 31 mã CTCK trong consensus_history; Simplize: 30 mã qua
+# API analysis-report/list). KHÔNG suy đoán — cặp nào chưa xác minh được là cùng
+# một công ty thì để riêng, `unmatched_policy` sẽ giữ nguyên tên gốc.
+#
+# CHỌN MÃ CHUẨN: ưu tiên mã đang chiếm đa số trong DB hiện tại để giảm xáo trộn.
+
+version: 1
+
+# Tên không khớp alias nào: GIỮ NGUYÊN tên gốc + đánh dấu chưa map.
+# Tuyệt đối không gộp bừa vào một nhóm "khác" — sẽ làm hỏng median.
+unmatched_policy: keep_raw
+
+canonical:
+  # --- Các cặp trùng ĐÃ XÁC MINH qua dữ liệu thật của cả 2 nguồn ---
+  VIETCAP:
+    name: "Vietcap (VCSC)"
+    aliases: [VIETCAP, VCSC, "VIET CAPITAL", VCSCVN]
+  MIRAE:
+    name: "Mirae Asset"
+    aliases: [MIRAE, MAS, MASVN, "MIRAE ASSET"]
+  SSV:
+    name: "Shinhan Securities Vietnam"
+    aliases: [SSV, SHINHAN, SHINHANVN, "SHINHAN SECURITIES"]
+  YUANTA:
+    name: "Yuanta Vietnam"
+    aliases: [YUANTA, YSVN, "YUANTA VIETNAM"]
+  VDSC:
+    name: "Rong Viet (VDSC)"
+    aliases: [VDSC, VDS, RONGVIET, "RONG VIET"]
+  AGR:
+    name: "Agriseco"
+    aliases: [AGR, AGRISECO]
+  SBSC:
+    name: "Saigonbank Berjaya"
+    aliases: [SBSC, SBBS]
+
+  # --- Nhất quán sẵn giữa 2 nguồn; khai báo để có tên hiển thị đẹp ---
+  SSI:   {name: "SSI Research",        aliases: [SSI, "SSI RESEARCH", SSIRESEARCH]}
+  HSC:   {name: "HSC",                 aliases: [HSC, HOCHIMINHSC]}
+  MBS:   {name: "MB Securities",       aliases: [MBS]}
+  BSC:   {name: "BIDV Securities",     aliases: [BSC, BSI]}
+  VNDS:  {name: "VNDirect",            aliases: [VNDS, VNDIRECT, VNDIR]}
+  VCBS:  {name: "Vietcombank Sec",     aliases: [VCBS]}
+  ACBS:  {name: "ACB Securities",      aliases: [ACBS]}
+  KBSV:  {name: "KB Securities VN",    aliases: [KBSV, KBSEC]}
+  BVSC:  {name: "Bao Viet Securities", aliases: [BVSC]}
+  FPTS:  {name: "FPT Securities",      aliases: [FPTS]}
+  DSC:   {name: "DSC",                 aliases: [DSC]}
+  SHS:   {name: "Sai Gon - Ha Noi Sec", aliases: [SHS]}
+  KAFI:  {name: "KAFI",                aliases: [KAFI]}
+  VPBS:  {name: "VPBankS",             aliases: [VPBS, VPBANKS]}
+  NHSV:  {name: "NH Securities VN",    aliases: [NHSV]}
+  EVS:   {name: "Everest Securities",  aliases: [EVS]}
+  ABS:   {name: "An Binh Securities",  aliases: [ABS]}
+  PHS:   {name: "Phu Hung Securities", aliases: [PHS]}
+  TPS:   {name: "TPBank Securities",   aliases: [TPS, ORS]}
+  PSI:   {name: "PetroVietnam Sec",    aliases: [PSI]}
+  CSI:   {name: "Kien Thiet Sec",      aliases: [CSI]}
+  IVS:   {name: "Guotai Junan VN",     aliases: [IVS]}
+  TVS:   {name: "Thien Viet Sec",      aliases: [TVS]}
+  VIX:   {name: "VIX Securities",      aliases: [VIX]}
+  CTS:   {name: "VietinBank Securities", aliases: [CTS, VIETINBANKSC, VIETINBANKSEC]}
+
+# ---------------------------------------------------------------------------
+# BẪY PHẢI TRÁNH — đọc kỹ trước khi thêm alias
+# ---------------------------------------------------------------------------
+# 1. "HCM" vừa là MÃ CỔ PHIẾU VN100 (Chứng khoán TP.HCM) vừa là viết tắt quen
+#    dùng của CTCK HSC. CỐ Ý KHÔNG đưa "HCM" vào aliases của HSC —
+#    tests/test_broker_names.py có assert chặn việc này. Nếu map, mọi chỗ đối
+#    chiếu ticker↔broker sẽ nhầm lẫn.
+# 2. Tương tự, các mã vừa là ticker vừa là CTCK: SSI, VIX, BSI, FTS, VND, VCI.
+#    Chúng nằm ở CỘT KHÁC NHAU trong DB (ticker vs broker) nên không xung đột —
+#    nhưng đừng thêm alias chéo kiểu VCI -> VIETCAP, vì VCI còn là mã được định giá.
+# 3. "VPX" xuất hiện 1 lần trên 24hmoney (mã MCH) nhưng CHƯA xác minh được là
+#    công ty nào → cố ý để chưa map, giữ nguyên tên gốc.
+# 4. "ELDIAN" (Simplize, 1 báo cáo) — chưa xác minh → để nguyên.

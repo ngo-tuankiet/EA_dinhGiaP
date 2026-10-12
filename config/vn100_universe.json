@@ -1,0 +1,17 @@
+{
+  "as_of": "2026-08-29",
+  "source": "vnstock VCI Listing.symbols_by_group('VN100')",
+  "official_reference": "https://staticfile.hsx.vn/Uploads/UploadDocuments/2479382/15072026%20CBTT%20-%20Danh%20muc%20thanh%20phan%20HOSE-Index%20thang%207.2026.pdf",
+  "symbols": [
+    "ACB", "ANV", "BAF", "BCM", "BID", "BMP", "BSI", "BSR", "BVH", "BWE",
+    "CII", "CMG", "CTD", "CTG", "CTR", "CTS", "DBC", "DCM", "DGW", "DIG",
+    "DPM", "DSE", "DXG", "EIB", "EVF", "FPT", "FRT", "FTS", "GAS", "GEE",
+    "GEX", "GMD", "GVR", "HAG", "HCM", "HDB", "HDG", "HHV", "HPG", "HSG",
+    "HT1", "KBC", "KDC", "KDH", "KOS", "LPB", "MBB", "MCH", "MSB", "MSN",
+    "MWG", "NAB", "NKG", "NLG", "NT2", "NVL", "OCB", "PAN", "PC1", "PDR",
+    "PHR", "PLX", "PNJ", "POW", "PVD", "PVT", "REE", "SAB", "SBT", "SHB",
+    "SIP", "SJS", "SSB", "SSI", "STB", "TAL", "TCB", "TCH", "TCX", "TPB",
+    "VCB", "VCG", "VCI", "VCK", "VGC", "VHC", "VHM", "VIB", "VIC", "VIX",
+    "VJC", "VND", "VNM", "VPB", "VPI", "VPL", "VPX", "VRE", "VSC", "VTP"
+  ]
+}

@@ -1,0 +1,28 @@
+# Ghi chú analyst theo mã — hiển thị ở cột "Lưu ý định giá" của bảng định giá chuẩn
+# (scripts/export_valuation_book.py). CHỈ ghi sự kiện đã kiểm chứng trên dữ liệu/tài liệu,
+# kèm nguồn. Không phải đầu vào mô hình: sửa ở đây không đổi giá trị hợp lý.
+# Ghi chú tự động (lệch CTCK, giá biến động, dự phóng ngân hàng...) do script sinh thêm.
+
+PNJ: >-
+  Giá sụt ~51% từ 63.100 (02/07/2026) về 30.750 (24/07/2026) sau khi cơ quan chức năng điều tra
+  nguyên Giám đốc P-Lab (giám định kim cương của PNJ); khách mua lại 7.062 tỷ trang sức tới 27/07.
+  Q2/2026 lỗ 283 tỷ. 25/09/2026 HĐQT trình kế hoạch 2026 lỗ 6.271 tỷ, phát hành riêng lẻ tối đa
+  550 triệu cp (~107%), không chia cổ tức tiền (báo chí 30/09/2026, chưa đối chiếu tài liệu gốc).
+  Giá mục tiêu CTCK 80–110 nghìn lập trước biến cố, đã lỗi thời. Đang bị chặn công bố
+  (config/event_holds.yaml, D46).
+CTD: >-
+  P/E lịch sử đã loại năm LN đáy (trung vị 27,9x → 18,9x, D43). Nếu FV vẫn cao hơn trung
+  vị CTCK là do LN phục hồi mạnh × P/E lịch sử — cần kiểm tra LN TTM có bền vững
+  (hoàn nhập dự phòng, thu nhập bất thường) trước khi dùng.
+HHV: >-
+  Doanh nghiệp BOT, nợ vay ~3,5 lần vốn hóa. DCF vĩnh viễn không phù hợp dự án có thời
+  hạn thu phí (ra +296%) nên bị chặn công bố. Cần lịch hết hạn thu phí từng dự án để
+  định giá đúng — hệ thống không tự đặt.
+NT2: >-
+  Hợp đồng mua bán điện (PPA) hiện tại tới 2032 rồi phải ký lại (BSC 15/06/2026). Mô hình
+  chưa cắt dòng tiền ở 2032 (chưa có năm hết vòng đời nhà máy đáng tin) — rủi ro giá bán
+  điện sau tái ký chưa được lượng hóa.
+EIB: >-
+  LNST TTM chỉ ~492 tỷ (ROE ~1,9%), giảm từ 3.327 tỷ năm 2024 do thu nhập ngoài lãi giảm
+  và trích lập tăng → RI cho giá trị thấp hơn giá trị sổ sách. Chỉ 2 CTCK theo dõi, có thể
+  chưa cập nhật diễn biến lợi nhuận mới nhất.

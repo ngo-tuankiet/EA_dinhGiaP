@@ -1,0 +1,14 @@
+# Chặn công bố giá trị hợp lý khi có sự kiện trọng yếu mà BCTC/giá mục tiêu CTCK chưa phản ánh (D46).
+# Mỗi dòng bắt buộc có reason + source. Analyst xóa dòng khi mô hình đã cập nhật (BCTC mới, số cp mới).
+# Số chẩn đoán nội bộ vẫn tính; chỉ không phát khuyến nghị/không xếp hạng.
+holds:
+  PNJ:
+    since: "2026-09-25"
+    reason: >-
+      Vụ án liên quan nguyên Giám đốc P-Lab (giám định kim cương); khách mua lại 7.062 tỷ trang sức
+      tới 27/07/2026; Q2/2026 lỗ 283 tỷ. HĐQT trình kế hoạch 2026 lỗ 6.271 tỷ (dự phòng 7.071 tỷ),
+      phát hành riêng lẻ tối đa 550 triệu cp (~107% số cp) và không chia cổ tức tiền.
+    source: >-
+      Báo chí tổng hợp 30/09/2026 (vietstock, cafef, thanhnien, dnse) — chưa đối chiếu tài liệu
+      ĐHĐCĐ bất thường gốc.
+    lift_when: Có BCTC phản ánh dự phòng và số cp sau phát hành; giá mục tiêu CTCK lập sau biến cố.

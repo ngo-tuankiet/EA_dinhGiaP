@@ -1,0 +1,231 @@
+# Sổ đăng ký hiệu chuẩn từng mã VN100 (D25).
+#
+# ĐÂY LÀ CƠ CHẾ "GIỮ NGUYÊN HAY PHẢI SỬA" cho từng công ty.
+#
+# Nguyên tắc (quyết định #1): mô hình ĐƯỢC PHÉP lệch khỏi đồng thuận CTCK — CTCK
+# cũng sai, cũng có thiên lệch lạc quan. Nhưng mỗi lần lệch phải GIẢI TRÌNH ĐƯỢC
+# bằng luận điểm cụ thể, có bằng chứng. Lệch mà không giải trình được ⇒ coi là
+# lỗi giả định và phải sửa.
+#
+# BA TRẠNG THÁI:
+#   out_of_band_justified — lệch CÓ CHỦ Ý, ta tin mình đúng hơn CTCK.
+#                           BẮT BUỘC có thesis + evidence + reviewed_on.
+#   out_of_band_must_fix  — thừa nhận là LỖI, nằm trong backlog sửa.
+#   data_blocked          — không đủ dữ liệu để kết luận (không phải lỗi mô hình).
+#
+# Luận điểm CÓ HẠN `review_ttl_days`: hết hạn thành STALE_JUSTIFICATION và phải
+# rà lại. "Đã giải thích một lần" không cấp quyền miễn nhiễm vĩnh viễn.
+#
+# Sửa file này là một commit được review bình thường.
+
+version: 1
+
+default_band: 0.20
+
+# Phương pháp proxy (dựa giá trị sổ sách/quỹ đất) có sai số bản chất lớn hơn DCF.
+# Ép chúng vào ±20% chỉ tạo ra hàng loạt "vi phạm" giả.
+bands_by_method:
+  SOTP: 0.35
+  RNAV: 0.30
+
+review_ttl_days: 180
+
+tickers:
+
+  # =========================================================================
+  # NHÓM 1 — LỖI ĐÃ XÁC ĐỊNH, ĐANG TRONG BACKLOG SỬA
+  # =========================================================================
+  # Bằng chứng chung: FV thấp hơn CHÍNH THỊ GIÁ 56-92% — sai số này không thể
+  # giải thích bằng "quan điểm thận trọng", đó là lỗi phương pháp.
+  # Xem D23 (bảng baseline) và kế hoạch GĐ3/GĐ4.
+
+  # --- Nhóm PB/chứng khoán: ĐÃ SỬA ở D26, phần lệch còn lại là bất đồng quan điểm ---
+  # (VCI/HCM/SSI dùng chung một luận điểm; lặp lại để mỗi mã tự đứng được khi đọc.)
+  SSI: &ck_thesis
+    status: out_of_band_justified
+    thesis: >-
+      D26 đã sửa 3 lỗi thật: (1) ROE lệch tử/mẫu số (lấy LNST trước tăng vốn chia
+      VCSH sau tăng vốn), (2) perpetuity một nhịp không có giai đoạn dự phóng,
+      (3) dùng chung model với bảo hiểm dù kinh tế khác hẳn. Phần lệch CÒN LẠI là
+      bất đồng quan điểm có cơ sở: mô hình dùng ROE mid-cycle của chính công ty
+      (8,9%-13,1% cho 7 CTCK), trong khi giá mục tiêu CTCK ngụ ý ROE 22%-30% —
+      CAO HƠN CẢ ĐỈNH chu kỳ 2021 (SSI 22%, VCI 27%). Đó là kịch bản nâng hạng
+      thị trường mới nổi; mô hình không đưa vào vì chưa xảy ra.
+      CÂU HỎI MỞ (chưa xử lý, không phải lý do bào chữa): COE 13,4%-15,2% có thể
+      hơi cao — công thức đang lấy rf theo TPCP VND rồi cộng NGUYÊN phần bù rủi ro
+      quốc gia dựng theo khung USD của Damodaran (mature 4,5% + CRP VN 3,7%), có
+      dấu hiệu tính trùng rủi ro quốc gia. Cần rà riêng ở một giai đoạn khác vì
+      COE ảnh hưởng TOÀN BỘ 97 mã, không được sửa lẻ trong phạm vi nhóm CK.
+    evidence:
+      - "DECISIONS.md#D26"
+      - "ROE mid-cycle thực đo 7 CTCK: 8,9%-13,1% (median 11,1%)"
+      - "P/B ngụ ý từ giá mục tiêu CTCK: SSI 2,34x, VCI 2,09x, HCM 1,69x"
+      - "ROE ngụ ý tương ứng: 30,0% / 26,2% / 21,9% — vượt đỉnh 2021"
+    owner: phi
+    reviewed_on: 2026-08-11
+    decision_ref: D26
+  VCI: *ck_thesis
+  HCM: *ck_thesis
+
+  # --- Nhóm SOTP: proxy sổ sách vô nghĩa với holding (sẽ sửa ở GĐ4) ---
+  MSN: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11}
+  TCH: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11}
+  # REE: đã bỏ khỏi registry — với band SOTP 0,35 thì -27,6% nằm TRONG band nên
+  # không còn là ngoại lệ cần giải trình (harness báo OBSOLETE_ENTRY). Phương
+  # pháp SOTP vẫn sẽ được sửa ở GĐ4 cho cả nhóm; registry chỉ theo dõi các mã
+  # NGOÀI band, không phải chất lượng phương pháp.
+  # VIC không có đồng thuận CTCK trong 180 ngày -> không đo được, không khai báo.
+
+  # --- Ngân hàng: D29 đã sửa overshoot của D20 ---
+  # ĐÃ GỠ khỏi registry (harness báo OBSOLETE_ENTRY sau D29): ACB (+44,3%→+18,1%),
+  # VIB (+42,4%→+8,8%), OCB (+55,1%→+19,7%), BID (-21,4%→-5,7%) — đều đã vào band.
+  # Còn lại 4 mã dưới đây vẫn ngoài band sau D29:
+  MBB:
+    status: out_of_band_must_fix
+    thesis: >-
+      Lệch +89% sau D29 (giảm nhẹ từ +93%). ROE bền vững 19,6% rất ổn định qua 6
+      kỳ (21/23/22/20/19/20%) nên ước lượng median không kéo xuống được, trong khi
+      thị trường chỉ trả P/B 1,25x (mô hình 1,67x). Chưa giải thích được vì sao
+      thị trường định giá thấp một ngân hàng ROE ~20%; nghi vấn chất lượng tài sản
+      hoặc COE nhóm ngân hàng quá thấp. CẦN ĐIỀU TRA RIÊNG.
+    evidence:
+      - "DECISIONS.md#D29"
+      - "ROE 6 kỳ: 21%/23%/22%/20%/19%/20% — không có xu hướng giảm"
+      - "P/B mô hình 1,67x vs thị trường 1,25x (tỷ lệ 1,34)"
+    owner: phi
+    reviewed_on: 2026-08-11
+    decision_ref: D29
+  # TPB: ĐÃ GỠ 02/10/2026 — sau D47 lệch +0,3% (trong band).
+  HDB: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11, decision_ref: D29}
+  # EIB/STB lệch ÂM sâu — ROE sụp thật (EIB 14%→2%, STB 18%→5%), mô hình phản ánh
+  # đúng số liệu nhưng thị trường vẫn trả P/B 1,28x/2,24x. Nghi vấn dữ liệu LNST
+  # hoặc câu chuyện tái cơ cấu mà mô hình không nắm được.
+  EIB: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11}
+  STB: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11}
+
+  # =========================================================================
+  # NHÓM 2 — LỆCH CÓ CHỦ Ý, ĐÃ GIẢI TRÌNH
+  # =========================================================================
+
+  # HPG: ĐÃ GỠ 02/10/2026 — sau D45 lệch −14,5% nằm trong band (harness báo OBSOLETE_ENTRY).
+
+  # =========================================================================
+  # NHÓM 3 — KHÔNG ĐỦ DỮ LIỆU ĐỂ KẾT LUẬN
+  # =========================================================================
+
+  NVL:
+    status: data_blocked
+    thesis: >-
+      Chỉ 1 CTCK theo dõi trong 180 ngày nên "median đồng thuận" thực chất là ý
+      kiến đơn lẻ, không đủ làm mốc đối chiếu. Cần thêm nguồn trước khi kết luận
+      mô hình đúng hay sai.
+    evidence: ["consensus_view.thin = True (1 CTCK)"]
+    owner: phi
+    reviewed_on: 2026-08-11
+
+  # =========================================================================
+  # NHÓM 4 — PHÂN LOẠI 02/10/2026 (golden test D49). Đề xuất của Claude, chờ phi duyệt.
+  # =========================================================================
+  # DCF/EV thấp hơn CTCK 27–58%: nguyên nhân chung đã biết — giả định thận trọng ROIC dài hạn
+  # = WACC sau năm 5 và P/E chuẩn hóa (người dùng chưa duyệt đổi). Là lỗi giả định cần sửa,
+  # không phải quan điểm có chủ ý → must_fix chung một luận điểm.
+  BMP: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  BSR: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  DGW: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  HSG: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  MWG: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  PLX: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  GVR: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  VTP: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  VRE: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  CTD:
+    status: out_of_band_must_fix
+    thesis: >-
+      P/E (EPS chuẩn hóa) × LN vừa phục hồi mạnh cho +55% so với CTCK, trong khi dòng tiền kinh
+      doanh 3 năm âm (CFO/LNST −0,16) và biên gộp ~4%: lợi nhuận chưa chứng minh được độ bền.
+    evidence: ["config/analyst_notes.yaml#CTD", "signals_20260929.csv: cfo_ni_3y = −0,16"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+    decision_ref: D49
+  NT2:
+    status: out_of_band_must_fix
+    thesis: >-
+      DCF chưa cắt/điều chỉnh dòng tiền khi PPA hết hạn 2032 (BSC 15/06/2026) → +41% so với CTCK;
+      phải thu EVN ~41% tổng tài sản chưa phản ánh rủi ro thu hồi.
+    evidence: ["config/analyst_notes.yaml#NT2", "DECISIONS.md#D43"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+    decision_ref: D49
+  GAS: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
+        thesis: "+23% so với 10 CTCK, chưa xác định nguyên nhân — cần điều tra giả định giá dầu/biên"}
+  HT1:
+    status: out_of_band_must_fix
+    thesis: >-
+      EV/EBITDA theo bội số lịch sử cho +22% so với CTCK dù ROE qua chu kỳ ~7% thấp hơn chi phí
+      vốn (bẫy giá trị theo hồ sơ phản biện) — bội số lịch sử không phù hợp khi ROE < COE.
+    evidence: ["round2_workflow_20260929.json: synth.excluded[HT1]"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+    decision_ref: D49
+  CTG:
+    status: out_of_band_must_fix
+    thesis: >-
+      Chi phí tín dụng chuẩn hóa = trung vị 3 năm 1,76% gồm các năm trích lập cao, trong khi TTM
+      0,96% → LN dự phóng thấp, −24% so với CTCK.
+    evidence: ["DECISIONS.md#D47"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+    decision_ref: D49
+  VPB:
+    status: out_of_band_must_fix
+    thesis: >-
+      Chi phí tín dụng trung vị 4,53% (gồm giai đoạn FE Credit xấu 2022–2024) so với TTM 2,75% →
+      LN dự phóng thấp. Giá mục tiêu CTCK trong DB lập trước GDKHQ cổ tức CP 26% (24/09/2026), quy
+      đổi xong vẫn lệch ~−49%.
+    evidence: ["DECISIONS.md#D47", "config/corporate_actions.yaml#VPB"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+    decision_ref: D49
+  PHR:
+    status: out_of_band_must_fix
+    thesis: >-
+      DCF chỉ tính mảng cao su, bỏ sót giá trị đất chuyển đổi KCN/đền bù (cần SOTP/land bank).
+      Giá mục tiêu CTCK lập trước thưởng 80% (GDKHQ 11/09/2026), quy đổi xong vẫn lệch ~−54%.
+    evidence: ["config/corporate_actions.yaml#PHR"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+    decision_ref: D49
+  MCH:
+    status: data_blocked
+    thesis: "Đồng thuận mỏng (2 CTCK trong 180 ngày) — median không đủ làm mốc đối chiếu."
+    evidence: ["consensus_view: n_brokers = 2"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+  SBT:
+    status: data_blocked
+    thesis: "Đồng thuận mỏng (1 CTCK trong 180 ngày) — median không đủ làm mốc đối chiếu."
+    evidence: ["consensus_view: n_brokers = 1"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+  VSC:
+    status: data_blocked
+    thesis: "Đồng thuận mỏng (2 CTCK trong 180 ngày) — median không đủ làm mốc đối chiếu."
+    evidence: ["consensus_view: n_brokers = 2"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-02
+
+# ===========================================================================
+# CÒN LẠI ~40 mã ngoài band CHƯA khai báo -> MISSING_JUSTIFICATION.
+# Đó là danh sách việc phải làm, KHÔNG phải danh sách bị bỏ quên: phần lớn thuộc
+# nhóm DCF (29 mã) sẽ được xử lý một thể ở GĐ7 (năm gốc dự phóng), vì nguyên
+# nhân chung là thiên lệch quá khứ chứ không phải lỗi riêng từng mã.
+# ===========================================================================

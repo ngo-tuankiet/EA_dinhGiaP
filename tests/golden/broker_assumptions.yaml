@@ -1,0 +1,64 @@
+# Giả định trích từ báo cáo CTCK thật (PDF lưu nội bộ reports/broker_pdfs/, không phát tán lại).
+# Chỉ ghi số liệu định lượng; mọi số có nguồn (CTCK, ngày, file).
+VCB:
+  source: {broker: SSV (Shinhan), date: 2026-08-27, file: VCB_SSV_2026-08-27.pdf}
+  target_price: 78300
+  coe: 0.102
+  terminal_growth: 0.02
+  rf: 0.045
+  erp: 0.0846
+  weights: {ri: 0.40, pb: 0.60}
+  ri_leg: 61655
+  pb_target: 2.5
+  bvps_12m: 35778
+  pb_leg: 89444
+MBB:
+  source: {broker: SSV (Shinhan), date: 2026-08-12, file: MBB_SSV_2026-08-12.pdf}
+  target_price: 26300
+  coe: 0.132
+  terminal_growth: 0.02
+  weights: {ri: 0.60, pb: 0.40}
+  ri_leg: 26570
+  pb_target: 1.4
+  bvps_12m: 18608
+  pb_leg: 26051
+HPG:
+  source: {broker: SSV (Shinhan), date: 2026-08-21, file: HPG_SSV_2026-08-21.pdf}
+  target_price: 35900
+  wacc: 0.1162
+  terminal_growth: 0.02
+  weights: {pe: 0.5, fcff: 0.5}
+  pe_target: 12.5
+  eps_2026: 2851
+  pe_leg: 35640
+  fcff_leg: 35200
+GMD:
+  source: {broker: SSV (Shinhan), date: 2026-08-06, file: GMD_SSV_2026-08-06.pdf}
+  target_price: 89600
+  method: SOTP (DCF cảng hợp nhất + SCS 34,5% + Gemalink 65,1%)
+  wacc: 0.117
+  terminal_growth: 0.0
+NT2:
+  source: {broker: BSC, date: 2026-06-15, file: NT2_BSC_2026-06-15.pdf}
+  target_price: 29000
+  wacc: 0.127
+  coe: 0.148
+  rf: 0.05
+  erp: 0.10
+VHM:
+  source: {broker: Vietcap, date: 2026-06-02, file: VHM_VIETCAP_2026-06-02.pdf}
+  target_price: 153700
+  method: RNAV (chiết khấu 15%)
+  wacc: 0.132
+  coe: 0.156
+SSI:
+  source: {broker: DSC, date: 2026-05-26, file: SSI_DSC_2026-05-26.pdf}
+  method: P/B
+  pb_target: 2.27
+FPT:
+  source: {broker: ACBS, date: 2026-08-07, file: FPT_ACBS_2026-08-07.pdf}
+  target_price: 100000
+  wacc: 0.128
+MWG:
+  source: {broker: ACBS, date: 2026-08-17, file: MWG_ACBS_2026-08-17.pdf}
+  target_price: 94000

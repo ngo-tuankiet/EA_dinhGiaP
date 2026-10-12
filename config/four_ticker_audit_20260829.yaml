@@ -1,0 +1,127 @@
+as_of_date: "2026-08-29"
+shared_limitations:
+  - "Trường published_at của dữ liệu vnstock gốc còn thiếu; chưa dùng bộ dữ liệu này cho backtest point-in-time."
+  - "Bốn mô hình chưa có golden test cấp mã đối chiếu với mô hình Excel/CTCK trong sai số 10%; giá trị hợp lý là kết quả kiểm tra, không phải giá mục tiêu đã phê duyệt."
+  - "Giá đóng cửa dùng ngày 28/08/2026; báo cáo không tính thuế, phí, quy mô vị thế hay khẩu vị rủi ro cá nhân."
+
+tickers:
+  ACB:
+    title: "Ngân hàng TMCP Á Châu"
+    sector_view: "Ngân hàng tư nhân, thiên về bán lẻ và SME"
+    data_verdict: "Dữ liệu hoạt động cốt lõi khớp tốt; đã sửa số cổ phiếu sau cổ tức 13%."
+    facts:
+      - {label: "Số cổ phiếu", metric: "shares", official: 5804421957, unit: "cp", tolerance_pct: 0.001}
+      - {label: "Dư nợ gộp Q2", metric: "latest_gross_loans", official: 745759.303, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "LNTT 6T", metric: "h1_pbt", official: 10700.0, unit: "tỷ đồng", tolerance_pct: 1.0}
+      - {label: "NII 6T", metric: "h1_nii", official: 14800.0, unit: "tỷ đồng", tolerance_pct: 1.0}
+      - {label: "TOI 6T", metric: "h1_toi", official: 18000.0, unit: "tỷ đồng", tolerance_pct: 1.0}
+    external_metrics:
+      - "NPL 1,0%; LLCR 105%; NIM quý 2 là 3,02%; LDR quản trị 81,4%; CAR 11,8%."
+      - "Tổng huy động gần 776 nghìn tỷ gồm nhiều nguồn; không so trực tiếp với riêng tiền gửi khách hàng 576,6 nghìn tỷ trong BCTC."
+    bull:
+      - "Bán lẻ và SME phục hồi giúp NIM cải thiện từ đáy quý 1."
+      - "Chất lượng tài sản tốt tạo dư địa tăng trưởng mà không phải hy sinh dự phòng."
+    bear:
+      - "Cạnh tranh huy động và lãi suất có thể khiến NIM phục hồi chậm."
+      - "Giá mục tiêu hệ thống cao hơn trung vị CTCK; phần tăng thêm phụ thuộc ROE duy trì."
+    counter:
+      - "Nợ xấu thấp không đồng nghĩa chi phí tín dụng đã qua đỉnh nếu bán lẻ tăng nhanh trở lại."
+      - "Upside cũ 46% là sai do dùng số cổ phiếu trước cổ tức; sau sửa chỉ còn khoảng 29%."
+    catalysts:
+      - "NIM quý 3 tiếp tục tăng và tín dụng bán lẻ/SME tăng có chọn lọc."
+      - "ACBS và công ty con duy trì đóng góp lợi nhuận cao hơn."
+    sources:
+      - "https://acb.com.vn/ve-chung-toi/kqkd-6-thang-2026-acb-dat-loi-nhuan-hon-10700-ty-dong-ban-le-va-sme-hoi-phuc-tich-cuc"
+      - "https://vsdc.vn/vi/s-detail/9"
+
+  CTG:
+    title: "Ngân hàng TMCP Công Thương Việt Nam"
+    sector_view: "Ngân hàng quốc doanh, quy mô lớn, thiên về khách hàng doanh nghiệp"
+    data_verdict: "Các chỉ tiêu chính khớp sát bản cập nhật nhà đầu tư; số cổ phiếu đã đối chiếu VSDC."
+    facts:
+      - {label: "Số cổ phiếu", metric: "shares", official: 7766944637, unit: "cp", tolerance_pct: 0.001}
+      - {label: "Tổng tài sản Q2", metric: "latest_assets", official: 2962003.670, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "Dư nợ gộp Q2", metric: "latest_gross_loans", official: 2092707.758, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "Tiền gửi KH Q2", metric: "latest_deposits", official: 1890809.553, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "LNTT 6T", metric: "h1_pbt", official: 25868.105, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "TOI 6T", metric: "h1_toi", official: 51486.144, unit: "tỷ đồng", tolerance_pct: 0.1}
+    external_metrics:
+      - "NPL 1,2%; LLCR 134%; CIR 24,5%; tăng trưởng tín dụng 5,0% từ đầu năm."
+      - "Cổ tức tiền mặt 450 đồng/cp đã có ngày đăng ký cuối cùng 24/07 và thanh toán 27/08/2026."
+    bull:
+      - "Lợi nhuận 6T tăng mạnh, CIR thấp và bộ đệm bao phủ nợ xấu cao."
+      - "Quy mô lớn giúp hưởng lợi từ chu kỳ tín dụng doanh nghiệp và đầu tư công."
+    bear:
+      - "Tăng trưởng tín dụng 5% thấp hơn toàn ngành trong nửa đầu năm."
+      - "Danh mục doanh nghiệp lớn nhạy với chu kỳ và quyết định chính sách."
+    counter:
+      - "Upside 51% cao hơn đáng kể trung vị CTCK; mô hình có thể đang dùng ROE/target P/B quá thuận lợi."
+      - "LLCR cao là tích cực nhưng không loại bỏ rủi ro hình thành nợ xấu mới."
+    catalysts:
+      - "Tín dụng tăng tốc trong nửa cuối năm và NIM phục hồi."
+      - "Chất lượng tài sản tiếp tục cải thiện trong khi CIR giữ dưới 27%."
+    sources:
+      - "https://investor.vietinbank.vn/documents/20126/1721243/CTG%20-%20Cap%20nhat%20KQKD%202Q2026%20%281%29.pdf.pdf/90fb28ed-8afc-bb12-08f2-34b510a6cbc0?download=true"
+      - "https://vsdc.vn/vi/s-detail/273"
+
+  PVT:
+    title: "Tổng Công ty CP Vận tải Dầu khí"
+    sector_view: "Vận tải dầu khí, mang tính chu kỳ và thâm dụng vốn"
+    data_verdict: "Đã thay bản quý bằng số 6T soát xét cho dòng tiền và BCTC; bổ sung 4.422 tỷ đầu tư ngắn hạn và trừ 2.894 tỷ NCI."
+    facts:
+      - {label: "Số cổ phiếu", metric: "shares", official: 516918938, unit: "cp", tolerance_pct: 0.001}
+      - {label: "Doanh thu 6T", metric: "h1_revenue", official: 9754.402, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "LNTT 6T", metric: "h1_pbt", official: 1366.465, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "LNST công ty mẹ 6T", metric: "h1_parent_pat", official: 897.759, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "CFO 6T", metric: "h1_cfo", official: 1786.160, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "Tiền + đầu tư ngắn hạn", metric: "latest_liquid_funds", official: 5848.358, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "NCI Q2", metric: "latest_nci", official: 2893.924, unit: "tỷ đồng", tolerance_pct: 0.1}
+    external_metrics:
+      - "BCTC soát xét Deloitte thay thế các số quý ban đầu; doanh thu 6T giảm khoảng 4% so với bản chưa soát xét nhưng LNTT tăng."
+      - "Trung vị giá mục tiêu CTCK gần đây thấp hơn đáng kể giá trị EV/EBITDA của hệ thống."
+    bull:
+      - "Đội tàu mở rộng và dòng tiền kinh doanh 6T mạnh hỗ trợ giảm áp lực vốn."
+      - "Nguồn tiền gửi lớn bù đáng kể nợ vay khi tính equity value."
+    bear:
+      - "Cước tàu, giá tàu và chi phí vay đều mang tính chu kỳ."
+      - "NCI chiếm tỷ trọng lớn; không thể gán toàn bộ EV hợp nhất cho cổ đông PVT."
+    counter:
+      - "Mục tiêu 32,3 nghìn cao hơn vùng 24,6-28,2 nghìn của báo cáo CTCK mới; đây là chênh lệch cần golden test."
+      - "Tiền gửi có thể bị cầm cố cho khoản vay mua tàu; không phải toàn bộ đều là excess cash tự do."
+    catalysts:
+      - "Giá thuê định hạn duy trì cao và tàu mới đóng góp đủ kỳ."
+      - "CFO tiếp tục chuyển thành giảm nợ hoặc tăng cổ tức."
+    sources:
+      - "https://pvtrans.com/web/content/document/download?filename=20260828+-+PVT+-+CBTT+BCTC+Hop+nhat+giua+nien+do+da+soat+xet+6T2026.pdf"
+      - "https://vsdc.vn/vi/s-detail/1500"
+
+  GAS:
+    title: "Tổng Công ty Khí Việt Nam - CTCP"
+    sector_view: "Hạ tầng khí và kinh doanh LPG/LNG, vị thế độc quyền tự nhiên cao"
+    data_verdict: "BCTC lợi nhuận khớp; đã bổ sung 34.401 tỷ đầu tư ngắn hạn và trừ 1.520 tỷ NCI."
+    facts:
+      - {label: "Số cổ phiếu", metric: "shares", official: 2412949756, unit: "cp", tolerance_pct: 0.001}
+      - {label: "Doanh thu 6T", metric: "h1_revenue", official: 81268.745, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "LNTT 6T", metric: "h1_pbt", official: 11207.900, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "LNST công ty mẹ 6T", metric: "h1_parent_pat", official: 8804.700, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "Tiền + đầu tư ngắn hạn", metric: "latest_liquid_funds", official: 45456.806, unit: "tỷ đồng", tolerance_pct: 0.1}
+      - {label: "NCI Q2", metric: "latest_nci", official: 1520.002, unit: "tỷ đồng", tolerance_pct: 0.1}
+    external_metrics:
+      - "Lợi nhuận 6T đã gần hoàn thành kế hoạch năm, nhưng công ty cảnh báo biến động dầu, mùa mưa và tiến độ kinh doanh quốc tế."
+      - "Khoản đầu tư nắm giữ đến đáo hạn 34.401 tỷ là tài sản tài chính lớn; phải phân biệt với tiền mặt hoạt động."
+    bull:
+      - "Bảng cân đối ròng tiền rất mạnh và lợi nhuận 6T vượt tiến độ kế hoạch."
+      - "LNG và nhu cầu điện khí tạo quyền chọn tăng trưởng dài hạn."
+    bear:
+      - "Sản lượng khí nội địa suy giảm và biên LPG/LNG phụ thuộc giá năng lượng."
+      - "CapEx LNG lớn có thể làm lượng tiền hiện tại không còn là excess cash."
+    counter:
+      - "Giá trị 105,8 nghìn cao hơn đa số mục tiêu CTCK gần đây; 34,4 nghìn tỷ tiền gửi là nguồn chính của chênh lệch."
+      - "Hoàn thành kế hoạch lợi nhuận sớm có thể phản ánh kế hoạch thận trọng, không nhất thiết là run-rate bền vững."
+    catalysts:
+      - "Sản lượng khí/LNG tăng và các dự án điện khí đi vào vận hành đúng tiến độ."
+      - "Chính sách cổ tức hoặc sử dụng vốn rõ ràng hơn cho lượng tiền lớn."
+    sources:
+      - "https://www.pvgas.com.vn/DesktopModules/EasyDNNNews/DocumentDownload.ashx?articleid=14606&documentid=3375&moduleid=648&portalid=0"
+      - "https://www.pvgas.com.vn/gioi-thieu/pv-gas-6-thang-dau-nam-2026-hoan-thanh-ke-hoach-loi-nhuan-va-nop-ngan-sach-cho-ca-nam-duy-tri-nguon-cung-khi-dam-bao-an-ninh-nang-luong-quoc-gia"
+      - "https://vsd.vn/vi/ad1/187620"

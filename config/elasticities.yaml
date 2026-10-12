@@ -1,0 +1,43 @@
+# ===================================================================
+# Macro Overlay — độ nhạy của driver dự phóng theo biến vĩ mô.
+#
+# NGUYÊN TẮC (spec mục 7, top-down overlay):
+#   - Base case driver LẤY TỪ LỊCH SỬ doanh nghiệp (repo.py). Overlay chỉ
+#     ĐIỀU CHỈNH quanh base, KHÔNG thay thế.
+#   - Công thức: adjusted = base + elasticity * (macro_now - macro_baseline)
+#     trong đó (macro_now - macro_baseline) tính theo đúng đơn vị registry.
+#
+# CẢNH BÁO (Luật vàng #1, #5): các hệ số dưới đây là ƯỚC LƯỢNG THẬN TRỌNG,
+# KHÔNG phải hằng số tài chính chuẩn. Chúng là điểm khởi đầu NGƯỜI DÙNG CHỈNH
+# ĐƯỢC (giống base case). Mỗi hệ số kèm lý do; chỗ nào chưa hiệu chỉnh bằng dữ
+# liệu thực thì để 0.0 (tắt overlay) thay vì đoán bừa.
+# ===================================================================
+macro_overlay:
+  enabled: true
+
+  # --- Tăng trưởng doanh thu theo GDP (GDP_YOY, đơn vị decimal) ---
+  # adjusted_rev_growth = base + beta * (GDP_now - GDP_baseline)
+  # Cơ sở: doanh thu danh nghĩa co giãn theo GDP danh nghĩa; ngành chu kỳ
+  # (thép, bán lẻ) có beta > 1, ngành phòng thủ (tiện ích) < 1.
+  revenue_growth_to_gdp:
+    default: 1.0
+    consumer: 0.8       # tiêu dùng thiết yếu ít nhạy chu kỳ
+    retail: 1.5         # bán lẻ nhạy chu kỳ
+    technology: 1.2
+    utilities: 0.5      # phòng thủ
+    real_estate: 1.8    # rất nhạy chu kỳ/lãi suất
+    steel: 2.0          # cyclical mạnh
+    banks: 0.0          # ngân hàng dùng credit_growth riêng, không qua GDP
+
+  # --- Tăng trưởng tín dụng ngân hàng theo tín dụng hệ thống ---
+  # (CREDIT_GROWTH, decimal). adjusted_credit_growth = base + beta*(now-baseline)
+  # Cơ sở: tăng trưởng cho vay từng bank bám tăng trưởng tín dụng toàn ngành.
+  credit_growth_to_system:
+    banks: 1.0          # bám 1:1 hệ thống (bank top có thể >1, tunable)
+
+  # --- Biên gộp thép theo giá HRC (STEEL_HRC, USD/tấn) ---
+  # adjusted_margin = base + beta_per_usd * (HRC_now - HRC_baseline)
+  # CHƯA hiệu chỉnh bằng spread quặng/than thực tế → để 0.0, bật khi có dữ liệu
+  # chi phí đầu vào (Luật vàng #1: không đoán công thức biên LN).
+  steel_margin_to_hrc_per_usd:
+    steel: 0.0          # TODO: hiệu chỉnh khi có giá quặng/than đầu vào

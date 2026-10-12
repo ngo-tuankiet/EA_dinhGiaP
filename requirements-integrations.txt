@@ -1,0 +1,6 @@
+# Optional packages for cloud export, Discord, and external report integrations.
+# The core viewer/valuation app only needs requirements.txt.
+discord.py>=2.3
+discord-webhook
+playwright
+yfinance

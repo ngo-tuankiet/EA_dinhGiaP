@@ -1,0 +1,25 @@
+# Tham số chất lượng dữ liệu đồng thuận CTCK (D24).
+# Tách khỏi defaults.yaml vì đây là tham số ĐO LƯỜNG, không phải giả định định giá —
+# đổi các số này KHÔNG làm đổi fair value, chỉ đổi cách ta đọc đồng thuận.
+
+version: 1
+
+# Cửa sổ gom báo cáo. 180 ngày ~ 2 quý: đủ để có mẫu, chưa quá cũ để lạc hậu.
+window_days: 180
+
+# Chu kỳ bán rã trọng số theo độ mới: w = 0.5 ^ (tuổi / half_life_days).
+# 90 ngày = báo cáo 1 quý trước còn nửa trọng số.
+# Đặt `null` để tắt weighting (median thường).
+#
+# LƯU Ý: `ConsensusView` luôn trả CẢ HAI `median` và `weighted_median`; harness
+# ghi cả hai vào calibration_observations để A/B bằng số liệu thực nghiệm thay vì
+# tranh luận. Chưa chốt dùng cái nào làm chuẩn — xem D24 khi có dữ liệu so sánh.
+half_life_days: 90
+
+# Báo cáo mới nhất cũ hơn mốc này -> ConsensusView.stale = True (cảnh báo, KHÔNG loại).
+# 120 ngày ~ 4 tháng: đã qua ít nhất 1 mùa BCTC mà chưa CTCK nào cập nhật lại.
+stale_after_days: 120
+
+# Dưới ngưỡng này thì median đồng thuận quá mỏng để tin cậy — báo cáo nên ghi rõ
+# "chỉ 1 CTCK theo dõi" thay vì trình bày như một đồng thuận thị trường.
+min_brokers_for_median: 2

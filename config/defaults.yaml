@@ -1,0 +1,425 @@
+# ===================================================================
+# COE Convention: Damodaran Global (chống double-count country risk)
+# ===================================================================
+# rf  = TPCP VN 10Y (risk-free danh nghĩa VND, lấy động)   ≈ 4.5%
+# erp = Mature Market ERP + Country Risk Premium VN = 4.5% + 3.7% = 8.2%
+# beta_default = 1.0
+# terminal_growth = 4.0% danh nghĩa VND, trần = min(rf, GDP danh nghĩa dài hạn)
+#
+# QUY TẮC VÀNG (chuẩn Damodaran cho thị trường mới nổi):
+#   CRP (Country Risk Premium) là phần bù RỦI RO VỐN CỔ PHẦN của TT mới nổi,
+#   TÁCH BIỆT với rủi ro vỡ nợ nằm trong lợi suất trái phiếu chính phủ.
+#   → ERP dùng cho COE PHẢI gồm CRP, dù rf là TPCP VN hay UST:
+#       rf = TPCP VN 10Y  → erp = mature + CRP  (COE bằng VND)
+#       rf = UST 10Y      → erp = mature + CRP  (COE bằng USD)
+#   Bỏ CRP sẽ under-price rủi ro cổ phiếu VN → WACC quá thấp → định giá ảo.
+# ===================================================================
+# CONVENTION ĐANG DÙNG (chốt): VND-base.
+#   rf  = TPCP VN 10Y (lấy động từ macro_series, KHÔNG dùng giá trị tĩnh dưới đây)
+#   erp = erp_mature + crp_vn  (= erp_total ≈ 8.2%)
+#   COE = rf_VN + beta * (erp_mature + crp_vn)   → code: valuation/engine/coe.py
+coe_convention:
+  rf: 0.043           # UST 10Y — chỉ tham chiếu (code lấy rf động = TPCP VN)
+  erp_mature: 0.045   # Mature market ERP (Damodaran US ERP) — ERP đang dùng
+  crp_vn: 0.037       # Country Risk Premium VN (Damodaran 2024-2025 ≈ 3.7%)
+  erp_total: 0.082    # erp_mature + crp_vn — ERP ĐANG DÙNG cho COE (get_erp)
+  beta_default: 1.0
+  # Tăng trưởng vĩnh viễn DUY NHẤT cho DCF/DDM/RI (danh nghĩa VND). Damodaran: g ≤ rf.
+  # 2% cũ < lạm phát (CPI 4,7-5,6%) = tăng trưởng thực âm ~3%/năm vĩnh viễn.
+  terminal_growth: 0.04
+
+# Hạn công bố BCTC (TT 96/2020): quý hợp nhất 30 ngày, năm kiểm toán 90 ngày.
+# build_company_data(as_of) chỉ dùng kỳ đã tới hạn → chống lookahead khi hiệu chỉnh.
+publication_lag_days:
+  quarterly: 30
+  annual: 90
+
+price_ingest:
+  # Lệch tương đối tối đa giữa giá tải lại và giá đã lưu ở đoạn chồng lấn trước
+  # khi coi là vnstock đã điều chỉnh hồi tố (sự kiện quyền) → tải lại toàn bộ.
+  readjust_tolerance: 0.005
+
+# Đối chiếu Δtiền = CFO - CapEx + cf_other (dòng tiền đầu tư/tài chính khác,
+# đã cộng ngược CapEx — xem valuation/data_access/repo.py::_cashflow_other_excluding_capex
+# và skill financial-data-integrity mục "Lỗi đã gặp thực tế").
+# Chỉ cảnh báo khi lệch vượt CẢ ngưỡng tuyệt đối lẫn một trong hai ngưỡng
+# tương đối — tránh nhiễu do làm tròn ở DN lớn, vẫn bắt được lệch thật ở DN
+# nhỏ. Xem docs/PLAN_FIX_CASHFLOW_WARNINGS.md.
+cash_reconciliation:
+  abs_tolerance_billion_vnd: 1.0
+  pct_total_assets_tolerance: 0.5   # % tổng tài sản
+  pct_delta_cash_tolerance: 2.0     # % biến động tiền tuyệt đối trong kỳ
+
+# DeepSeek chỉ được gọi khi người dùng bấm nút kiểm chứng & sinh báo cáo.
+# Một lần bấm = tối đa một API call; Python làm kiểm tra số học trước, model
+# chỉ phản biện dữ liệu và viết nháp trong cùng một JSON response.
+deepseek_report:
+  fast_model: "deepseek-v4-flash"
+  pro_model: "deepseek-v4-pro"
+  cache_enabled: true
+  max_output_tokens: 8000         # báo cáo ~9k ký tự từng bị cắt ở 4200 (tối đa deepseek-chat: 8K)
+  temperature: 0.2
+  consensus_max_reports: 8
+  consensus_summary_max_chars: 1200
+  consensus_fetch_timeout_sec: 12
+  consensus_window_days: 180
+  identity_tolerance_pct: 0.5
+  growth_warning_pct: 100.0
+  upside_warning_pct: 100.0
+  pro_warning_count: 2
+
+# Khuyến nghị DUY NHẤT (decision_engine.recommend): MUA khi upside ≥ MOS theo bản
+# chất ngành; NẮM GIỮ khi 0 ≤ upside < MOS; GIẢM TỶ TRỌNG khi trim_floor ≤ upside < 0;
+# còn lại BÁN. Cổng chặn quản trị/NOT_RATED ưu tiên trước mọi ngưỡng.
+margin_of_safety:
+  default: 0.25
+  macro_stress_add: 0.05
+  trim_floor: -0.10
+  by_business_nature:
+    Compounder: 0.15
+    Bank: 0.20
+    Utility: 0.20
+    Retail: 0.25
+    Cyclical: 0.30
+    Developer: 0.30
+    Securities: 0.30
+
+# ===================================================================
+# Tăng trưởng GDP danh nghĩa dài hạn (neo cho revenue_growth fade trong
+# build_company_data): doanh thu các DN phi tài chính được fade từ median
+# lịch sử (năm 1) về mức này (năm 5) — mean-reversion, chống extrapolate
+# tăng trưởng đỉnh chu kỳ. ~8% = GDP thực VN ~6% + lạm phát ~2-3%.
+# ===================================================================
+long_run_nominal_gdp_growth: 0.08
+
+# ===================================================================
+# Thuế suất TNDN theo ngành (effective tax rate mặc định)
+# Nguồn: Luật thuế TNDN VN + ưu đãi đầu tư theo lĩnh vực
+# repo.py ưu tiên effective_tax tính từ lịch sử; giá trị này là
+# fallback khi lịch sử không đủ dữ liệu (< 3 năm).
+# ===================================================================
+sector_tax_rates:
+  default: 0.20          # Thuế TNDN phổ thông 20%
+  banks: 0.20
+  securities: 0.20
+  insurance: 0.20
+  real_estate: 0.20
+  technology: 0.10       # Phần mềm/CNTT — ưu đãi Luật CNTT
+  industrial_zone: 0.10  # KCN — ưu đãi đầu tư
+  agriculture: 0.15      # Nông nghiệp/chế biến thực phẩm
+  steel: 0.20
+  utilities: 0.20
+  consumer: 0.20
+  retail: 0.20
+
+# ===================================================================
+# EV/EBITDA mục tiêu theo ngành (NTM, dùng cho multiples valuation)
+# Nguồn: Bloomberg consensus peer multiples Asia EM / VN
+# Không áp dụng cho banks/securities/insurance (dùng P/B).
+# ===================================================================
+sector_ev_ebitda:
+  default: 7.0
+  technology: 13.0       # FPT, CMG — tăng trưởng cao
+  real_estate: 15.0      # VHM, VIC — NAV premium
+  steel: 5.5             # HPG, HSG — chu kỳ, mid-cycle
+  consumer: 9.0          # VNM, MSN, SAB
+  retail: 8.0            # MWG, FRT, PNJ
+  utilities: 10.0        # GAS, POW, REE
+  oil_gas: 6.0           # PLX, BSR — phân phối/lọc dầu, biên mỏng commodity
+  aviation: 6.0          # HVN, VJC — hàng không, lợi nhuận biến động mạnh
+  transport: 6.5         # PVT, HAH, GMD, VSC — vận tải/cảng biển, thâm dụng vốn, chu kỳ
+  industrial_zone: 12.0  # BCM, KBC, IDC — KCN cho thuê, dòng tiền thuê dài hạn
+  agriculture: 7.0
+  banks: null            # Không dùng — P/B / Residual Income
+  securities: null       # Không dùng — P/B
+
+# ===================================================================
+# P/E mục tiêu theo ngành (NTM) — dùng cho định giá P/E so sánh.
+# Áp cho dệt may/thủy sản, xây dựng... (Excel: P/E chủ đạo). EPS chuẩn hóa
+# (median lịch sử) để chống nhiễu lợi nhuận một năm.
+# ===================================================================
+# ===================================================================
+# Tham số PROXY cho RNAV/SOTP (ước lượng từ BCTC — KHÔNG phải định giá CTCK
+# chi tiết). Kết quả luôn gắn cờ VALUATION_PROXY.
+# ===================================================================
+# DDM (điện): cross-check DCF. Payout = cổ tức đã trả / LN mẹ gộp N năm gần nhất;
+# tăng trưởng cổ tức = đường tăng trưởng doanh thu + g vĩnh viễn chung với DCF.
+# DDM chỉ hợp lệ khi cổ tức ≈ FCFE (Damodaran) → payout thấp hơn ngưỡng thì bỏ DDM.
+ddm:
+  payout_years: 4
+  min_payout: 0.40
+  power_dcf_weight: 0.6      # blend cho ngành điện: 60% DCF + 40% DDM
+
+# Sự kiện vốn/quyền cổ đông. Nguồn tổng hợp chỉ là lớp phát hiện; sự kiện có
+# source_tier=OFFICIAL mới được coi là đã đối chiếu VSDC/HOSE/HNX/IR.
+corporate_actions:
+  history_years: 5
+  future_days: 365
+  market_upcoming_days: 30
+  refresh_ttl_hours: 24
+  error_retry_minutes: 30
+  page_size: 200
+  request_interval_sec: 1.1
+  max_events_ai: 12
+  historical_impact_max_events: 12
+  example_holding_shares: 1000
+  price_impact_short_sessions: 5
+  price_impact_long_sessions: 20
+  reaction_materiality_pct: 2.0
+  attractive_dividend_yield_pct: 5.0
+  dilution_warning_pct: 10.0
+  # Vốn điều lệ BCTC đã tăng ≥ (1+tỷ lệ)×(1−tol) so với trước GDKHQ → coi như đã phản ánh.
+  split_reflected_tolerance: 0.02
+
+proxy_valuation:
+  # D28 — proxy lệch quá mức này so THỊ GIÁ ⇒ NOT_RATED, không xuất bản số.
+  # Proxy sổ sách/lợi nhuận không mô tả được tập đoàn đa ngành (VIC lệch -92%).
+  proxy_max_divergence: 0.50
+  rnav_land_premium: 0.30        # đánh giá lại hàng tồn kho BĐS + BĐS đầu tư so giá sổ
+  rnav_weight_nav: 0.7           # trọng số NAV vs P/B trong blend RNAV
+  sotp_operating_pe: 11.0        # bội số LN cho giá trị mảng vận hành (holding)
+  sotp_earnings_weight: 0.6      # trọng số định giá theo LN vs NAV sổ sách
+  sotp_holding_discount: 0.10    # chiết khấu holding
+
+sector_pe:
+  default: 10.0
+  textile_seafood: 8.0   # VHC, ANV, MSH, STK, GIL — chu kỳ XK, biên mỏng
+  construction: 9.0      # CTD, VCG — biên thấp, dòng tiền dự án
+  pharma: 13.0           # DHG, IMP — phòng thủ, ổn định
+  consumer: 14.0
+  technology: 15.0
+
+# ===================================================================
+# Nguồn dữ liệu vĩ mô được phép gọi (allowlist — Bảo mật mục 5).
+# Scraper macro chỉ được fetch từ các domain liệt kê ở đây. Mọi domain
+# khác bị từ chối (chống gọi endpoint lạ / SSRF).
+# ===================================================================
+macro_sources:
+  allowed_domains:
+    - sbv.gov.vn          # Ngân hàng Nhà nước — lãi suất điều hành, tỷ giá, tín dụng, M2
+    - www.sbv.gov.vn
+    - gso.gov.vn          # Tổng cục Thống kê — GDP, CPI, IIP, bán lẻ, FDI
+    - www.gso.gov.vn
+    - nso.gov.vn          # Cục Thống kê (tên miền mới của GSO) — CPI, GDP
+    - www.nso.gov.vn
+    - hnx.vn              # Sở GDCK Hà Nội — lợi suất TPCP (đường cong yield), chính thống
+    - www.hnx.vn
+    - vbma.org.vn         # Hiệp hội Thị trường Trái phiếu VN — lợi suất TPCP
+    - www.vbma.org.vn
+    - worldgovernmentbonds.com      # Đường cong lợi suất TPCP VN đầy đủ (1Y-30Y), dễ bóc tách (JS-render → cào qua Chrome)
+    - www.worldgovernmentbonds.com
+    - tradingeconomics.com          # CPI, lãi suất điều hành, GDP, bán lẻ VN (JS-render → cào qua Chrome)
+    - 24hmoney.vn                   # Tổng hợp khuyến nghị đa CTCK (SSI/KBSV/BSC/MIRAE/ACBS...) — HTML SSR, lấy bằng httpx
+    - api-finance-t19.24hmoney.vn
+    - api2.simplize.vn              # Simplize API JSON: khuyến nghị đa CTCK (FPTS/MAS/VPBS/BVSC/YUANTA/DSC/KIS...) + link PDF
+    - cdn.simplize.vn               # CDN chứa PDF báo cáo CTCK (attachedLink) — tải nội bộ tham khảo
+    - fred.stlouisfed.org           # FRED (Fed St. Louis): lãi suất Fed, TPCP Mỹ 10Y — CSV công khai, không cần key (người dùng duyệt 10/10/2026)
+  request_timeout_sec: 15
+  user_agent: "antigravity-vn100-macro/1.0"
+  # Nguồn TPCP_10Y đang dùng: worldgovernmentbonds.com (đường cong đầy đủ, dữ
+  # liệu render bằng JS nên cào qua Chrome MCP — xem scripts/refresh_macro_chrome.md).
+  # HNX/VBMA giữ trong allowlist để dùng khi có endpoint API xác nhận.
+  tpcp_10y_endpoint: ""
+
+# ===================================================================
+# Registry chuỗi vĩ mô chuẩn hóa (Luật vàng #5 — truy vết).
+# Chỉ series_code khai báo ở đây mới được ghi vào bảng macro_series.
+# - unit: đơn vị value đã chuẩn hóa khi lưu DB.
+# - source: nguồn dữ liệu (phải nằm trong macro_sources.allowed_domains
+#   nếu scrape; 'vnstock'/'derived' nếu lấy gián tiếp).
+# series_code phải KHỚP với indicator_code trong bảng macro_radar.
+# ===================================================================
+macro_series_registry:
+  TPCP_10Y:                 # Lợi suất trái phiếu Chính phủ VN kỳ hạn 10 năm
+    unit: decimal_rate      # 0.032 = 3.2%
+    source: vnstock         # lấy qua vnstock/bond; fallback SBV
+    frequency: DAILY
+  CPI_YOY:                  # CPI so cùng kỳ năm trước
+    unit: decimal_rate
+    source: gso.gov.vn
+    frequency: MONTHLY
+  GDP_YOY:                  # Tăng trưởng GDP so cùng kỳ
+    unit: decimal_rate
+    source: gso.gov.vn
+    frequency: QUARTERLY
+  USDVND:                   # Tỷ giá USD/VND
+    unit: vnd_per_usd
+    source: yfinance        # VND=X (fallback SBV tỷ giá trung tâm)
+    frequency: DAILY
+  M2_YOY:                   # Tăng trưởng cung tiền M2 so cùng kỳ
+    unit: decimal_rate
+    source: sbv.gov.vn
+    frequency: MONTHLY
+  CREDIT_GROWTH:            # Tăng trưởng tín dụng toàn hệ thống YTD
+    unit: decimal_rate
+    source: sbv.gov.vn
+    frequency: MONTHLY
+  POLICY_RATE:             # Lãi suất tái cấp vốn điều hành SBV
+    unit: decimal_rate
+    source: sbv.gov.vn
+    frequency: EVENT
+  STEEL_HRC:                # Giá thép cuộn cán nóng (HRC futures, USD/tấn) — driver biên LN thép
+    unit: usd_per_tonne
+    source: yfinance        # HRC=F (US Midwest HRC futures) làm proxy
+    frequency: WEEKLY
+  CRUDE_OIL:                # Dầu thô WTI (USD/thùng) — driver chi phí năng lượng
+    unit: usd_per_barrel
+    source: yfinance        # CL=F
+    frequency: DAILY
+  RETAIL_SALES_YOY:         # Tổng mức bán lẻ HHDV so cùng kỳ — driver bán lẻ
+    unit: decimal_rate
+    source: gso.gov.vn
+    frequency: MONTHLY
+  FED_FUNDS_UPPER:          # Lãi suất mục tiêu Fed — cận trên (FRED DFEDTARU)
+    unit: decimal_rate
+    source: fred.stlouisfed.org
+    frequency: EVENT
+  FED_FUNDS_LOWER:          # Lãi suất mục tiêu Fed — cận dưới (FRED DFEDTARL)
+    unit: decimal_rate
+    source: fred.stlouisfed.org
+    frequency: EVENT
+  UST_10Y:                  # Lợi suất TPCP Mỹ 10 năm (FRED DGS10)
+    unit: decimal_rate
+    source: fred.stlouisfed.org
+    frequency: DAILY
+
+# Khung "Chỉ số vĩ mô" trên sidebar + nhận định nhanh theo quy tắc (không gọi AI).
+macro_dashboard:
+  # Số ngày tối đa kể từ ngày quan sát trước khi đánh dấu "cũ" (EVENT: không tính tuổi).
+  stale_days: {DAILY: 7, WEEKLY: 14, MONTHLY: 45, QUARTERLY: 120}
+  cpi_target: 0.045           # Mục tiêu lạm phát Quốc hội giao 2026 (~4,5%)
+  cpi_near_band: 0.005        # Trong ±0,5 điểm % quanh mục tiêu → "sát mục tiêu"
+  fed_lookback_days: 120      # So lãi suất Fed với mức khác gần nhất trong cửa sổ này
+  fred_history_days: 60       # Số ngày lịch sử lấy từ FRED mỗi lần cập nhật
+
+# Khung "Tổng quan thị trường" (D51). Ngưỡng HEURISTIC — điểm khởi đầu người dùng chỉnh được,
+# không phải hằng số tài chính chuẩn. Mỗi trụ cột −1/0/+1; tổng ≥ +overall_threshold = Thuận lợi.
+market_overview:
+  history_days: 400           # Ngày lịch lấy giá (đủ ~250 phiên cho MA200)
+  min_coverage: 0.5           # Ngày/khung có < 50% mã VN100 có dữ liệu → không dùng
+  spread_comfort: 0.01        # TPCP 10N VN − Mỹ ≥ 1 điểm % → +1; < 0 → −1
+  ma_short: 50
+  ma_long: 200
+  breadth_high: 0.60          # ≥ 60% mã VN100 trên MA50 → +1
+  breadth_low: 0.40           # ≤ 40% → −1
+  return_sessions: 20         # Cửa sổ đà giá và dòng tiền khối ngoại (phiên)
+  flow_band_bn: 2000          # |mua/bán ròng VN100 20 phiên| < 2.000 tỷ → trung tính
+  upside_high: 0.15           # Upside trung vị VN100 (mô hình) ≥ 15% → +1
+  upside_low: 0.0             # ≤ 0% → −1
+  overall_threshold: 2
+  sector_min_members: 2       # Ngành < 2 mã không xếp mạnh/yếu (nhiễu)
+  top_n: 5
+  stale_days: 7               # Giá cũ hơn 7 ngày → cảnh báo "cũ"
+  # Mục VN-Index (D52): xu hướng = giá so MA (trên → tăng); RSI Wilder; mốc hỗ trợ/kháng cự.
+  ma_trend: [20, 50, 200]     # ngắn / trung / dài hạn
+  change_sessions: [5, 20]    # Thay đổi % hiển thị
+  rsi_period: 14
+  rsi_overbought: 70
+  rsi_oversold: 30
+  level_window: 60            # Đáy/đỉnh N phiên làm ứng viên hỗ trợ/kháng cự
+
+# ===================================================================
+# D26/D27 — Định giá định chế tài chính phi ngân hàng
+# Mọi ngưỡng dưới đây là GUARDRAIL chống dữ liệu rác, KHÔNG phải núm
+# vặn để ép kết quả khớp CTCK. Khoảng quan sát thực tế ghi kèm để sau
+# này có cơ sở đánh giá lại.
+# ===================================================================
+securities:                 # CTCK: SSI VND VCI HCM VIX FTS BSI
+  norm_years_recent: 3      # cửa sổ ROE "hiện tại"
+  capital_deployment_years: 3   # số năm vốn mới huy động giải ngân hết vào margin
+  terminal_roe_floor: 0.05
+  terminal_roe_cap: 0.20    # ROE mid-cycle thực đo của 7 CTCK: 8.9%-13.1%
+  payout_ratio: 0.20
+  weight_ri: 0.5
+  forecast_years: 5
+
+insurance:                  # Bảo hiểm: BVH BMI MIG
+  norm_years: 5             # chu kỳ lãi suất dài hơn chu kỳ thanh khoản
+  roe_sanity_min: 0.0
+  roe_sanity_max: 0.30      # ngoài khoảng -> nghi map nhầm doanh thu phí, NOT_RATED
+  terminal_roe_floor: 0.04
+  terminal_roe_cap: 0.16    # ROE mid-cycle thực đo của 3 DN: 8.6%-12.6%
+  payout_ratio: 0.30
+  weight_ri: 0.5
+  forecast_years: 5
+
+audit:
+  # Mã lệch quá dải này so với trung vị giá mục tiêu CTCK phải có giải thích (không ép khớp).
+  consensus_review_band: 0.25
+  # Phần dư "tài sản ngắn hạn khác" / tài sản ngắn hạn vượt ngưỡng → cờ nghi mất dòng khi nạp.
+  unexplained_current_assets_share: 0.35
+
+# D45 — DCF phi tài chính.
+dcf:
+  # Doanh thu / vốn đầu tư vận hành (Damodaran "sales to capital"): CapEx mặc định =
+  # khấu hao + Δdoanh thu × (1/hệ số − vốn lưu động/DT) → tái đầu tư khớp tăng trưởng thay
+  # cho CapEx/DT lịch sử giữ phẳng 5 năm (GMD 28% suốt kỳ dù tăng trưởng giảm về 4,7%).
+  # Dải kẹp theo phổ ngành của Damodaran (hạ tầng ~0,3 → phần mềm/bán lẻ ~5).
+  sales_to_capital_band: [0.3, 5.0]
+
+# Bội số so sánh = trung vị 5 cuối năm của CHÍNH mã (repo.own_history_multiple).
+# Ngoài dải → coi là nhiễu (năm LN đáy/đỉnh) và dùng hằng số ngành, gắn cờ.
+relative_multiples:
+  pe: [3.0, 40.0]
+  ev_ebitda: [2.0, 25.0]
+
+relative_pb:                # sàn/trần P/B mục tiêu (pb_relative.py)
+  floor: 0.3
+  ceiling: 4.0
+
+guardrails:                 # ngưỡng bắn CỜ (không kẹp giá trị)
+  fv_below_price_alarm: 0.40
+  fv_above_price_alarm: 1.00
+  pb_vs_market_max_ratio: 2.0
+  pb_vs_market_min_ratio: 0.5
+
+# ===================================================================
+# D29 — Tham số terminal cho ngân hàng (trước đây là literal trong
+# bank_general.py, không quét/không audit được — luật vàng #5).
+# ===================================================================
+bank_terminal:
+  # ROE bền vững = ROE năm 5 của dự phóng chuẩn hóa (driver hiện tại, chi phí tín
+  # dụng chuẩn hóa, ràng buộc vốn) — nhất quán với RI. Trung vị ROE lịch sử cửa sổ
+  # roe_window chỉ để đối chiếu: lệch > roe_history_tolerance → cờ.
+  roe_window: 3
+  roe_history_tolerance: 0.05
+  # Chi phí tín dụng chuẩn hóa = MEDIAN N năm tài chính ĐẦY ĐỦ gần nhất (loại kỳ TTM:
+  # TTM chồng năm trước nên đếm một quý trích lập đột biến hai lần — STB/EIB Q4/2025).
+  credit_cost_window: 3
+  # D47: dự phóng = max(TTM, trung vị); TTM > N × trung vị coi là trích lập đột biến một lần
+  # (STB Q4/2025) → giữ trung vị + cờ BANK_CREDIT_COST_SPIKE.
+  credit_cost_spike_multiple: 2.0
+  roe_fallback: 0.15
+  # Trần DUY NHẤT thay cho hệ thống tier 15%/20% của D20: tier tạo vách đứng phi
+  # kinh tế ở ngưỡng 18% (17,9% -> trần 15%; 18,1% -> trần 20%).
+  terminal_roe_cap: 0.20
+  terminal_roe_floor: 0.0
+  # Có sàn thì phải có trần (trước D29 chỉ có sàn 0,3x).
+  target_pb_floor: 0.3
+  target_pb_ceiling: 3.0
+  # Lệch giữa payout ngụ ý bởi Gordon (1 - g/ROE) và payout dùng trong dự phóng.
+  payout_consistency_tol: 0.30
+
+# Guardrail dự phóng ngân hàng: YoY một quý là tín hiệu hiện tại, không phải
+# tốc độ bền vững để ngoại suy nguyên vẹn suốt 5 năm.
+bank_forecast:
+  credit_growth_floor: 0.05
+  credit_growth_cap: 0.25
+  # Payout tiền mặt = cổ tức đã trả / LN 3 năm; NH VN chủ yếu chia CP nên thường thấp.
+  payout_cap: 0.5
+  payout_fallback: 0.2
+
+# ===================================================================
+# D32 — Năm gốc dự phóng. Mặc định TRAILING = hành vi y hệt trước D32.
+# Đổi sang FORWARD phải chạy harness đối chiếu trước/sau (xem D32).
+# ===================================================================
+forecast:
+  base_year_mode: TRAILING     # TRAILING | FORWARD
+  momentum_window_quarters: 4
+  # Co ngót về median lịch sử: 0 = thuần trailing, 1 = thuần động lượng.
+  momentum_weight: 0.5
+  max_uplift_vs_trailing: 0.10
+  max_cut_vs_trailing: 0.10
+  # Chặn median tăng trưởng doanh thu lịch sử dùng cho năm 1 (DN suy giảm được âm).
+  growth_floor: -0.10
+  growth_cap: 0.25

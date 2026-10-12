@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Báo cáo Định giá Cổ phiếu {{ ticker }}</title>
+    <style>
+        body {
+            font-family: 'DejaVu Sans', 'Helvetica Neue', Arial, sans-serif;
+            color: #1E293B;
+            margin: 40px;
+            line-height: 1.6;
+        }
+        .header {
+            border-bottom: 3px solid #0F172A;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .title {
+            font-size: 26px;
+            font-weight: bold;
+            color: #0F172A;
+            margin: 0;
+        }
+        .meta {
+            color: #64748B;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        .rec-box {
+            background-color: #F8FAFC;
+            border-left: 8px solid {{ rec_color }};
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .rec-title {
+            font-size: 13px;
+            color: #64748B;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+        }
+        .rec-val {
+            font-size: 34px;
+            font-weight: bold;
+            color: {{ rec_color }};
+            margin: 0;
+        }
+        .kv-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        .kv-grid td {
+            border: 1px solid #E2E8F0;
+            padding: 6px 12px;
+            font-size: 12.5px;
+        }
+        .kv-grid td.k { color: #64748B; width: 22%; background: #F8FAFC; }
+        .section-title {
+            font-size: 17px;
+            color: #0F172A;
+            border-bottom: 1.5px solid #CBD5E1;
+            padding-bottom: 5px;
+            margin-top: 28px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            font-weight: bold;
+            page-break-after: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+        th, td {
+            border: 1px solid #E2E8F0;
+            padding: 6px 10px;
+            text-align: left;
+            font-size: 12px;
+        }
+        th {
+            background-color: #F1F5F9;
+            color: #334155;
+            font-weight: bold;
+        }
+        .text-right { text-align: right; }
+        .chart-container { text-align: center; margin: 16px 0; }
+        .chart-img {
+            max-width: 92%;
+            height: auto;
+            border: 1px solid #E2E8F0;
+            border-radius: 4px;
+        }
+        .ai-notice {
+            display: inline-block;
+            background: #FEF3C7;
+            color: #92400E;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+            padding: 2px 8px;
+            margin-bottom: 8px;
+        }
+        .narrative {
+            font-size: 13px;
+            text-align: justify;
+            white-space: pre-line;
+        }
+        .flag-chip {
+            display: inline-block;
+            background: #FEE2E2;
+            color: #991B1B;
+            font-size: 11px;
+            border-radius: 4px;
+            padding: 2px 8px;
+            margin: 2px 4px 2px 0;
+        }
+        .disclaimer {
+            margin-top: 40px;
+            font-size: 10.5px;
+            color: #94A3B8;
+            border-top: 1px solid #E2E8F0;
+            padding-top: 10px;
+            text-align: justify;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============ 1. TRANG ĐẦU / COVER ============ -->
+    <div class="header">
+        <div class="title">BÁO CÁO PHÂN TÍCH & ĐỊNH GIÁ DOANH NGHIỆP</div>
+        <div class="meta">Mã cổ phiếu: <b>{{ ticker }}</b> · {{ name }} · Ngành: {{ sector }} | Ngày lập: {{ date }} | Người phân tích: {{ analyst }}</div>
+    </div>
+
+    <div class="rec-box">
+        <div class="rec-title">KHUYẾN NGHỊ ĐẦU TƯ</div>
+        <table style="border: none; margin: 0; background: transparent; width: 100%;">
+            <tr style="background: transparent;">
+                <td style="border: none; padding: 0; width: 50%;">
+                    <div class="rec-val">{{ recommendation }}</div>
+                    <div style="font-size: 14px; color: #64748B; margin-top: 5px;">Upside dự phóng: <b>{{ upside }}%</b></div>
+                </td>
+                <td style="border: none; padding: 0; text-align: right; width: 50%;">
+                    <div style="font-size: 13px; color: #64748B;">Giá mục tiêu (Blended):</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #0F172A;">{{ target_price }} VND</div>
+                    <div style="font-size: 12.5px; color: #64748B;">Thị giá hiện tại: {{ current_price }} VND</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <table class="kv-grid">
+        <tr>
+            <td class="k">Vốn hóa thị trường</td><td><b>{{ market_cap }}</b> tỷ đồng</td>
+            <td class="k">SLCP lưu hành</td><td>{{ shares }} triệu cp</td>
+        </tr>
+        <tr>
+            <td class="k">Phương pháp chủ đạo</td><td>{{ intrinsic_method }}</td>
+            <td class="k">Phương pháp đối chiếu</td><td>{{ relative_method }}</td>
+        </tr>
+    </table>
+
+    <!-- ============ 2. LUẬN ĐIỂM ĐẦU TƯ ============ -->
+    <div class="section-title">1. Luận điểm đầu tư</div>
+    {% if narrative.ai_generated %}<span class="ai-notice">⚠ Nháp do AI tạo — cần analyst review trước khi phát hành</span>{% endif %}
+    <div class="narrative">{{ narrative.thesis }}</div>
+
+    <!-- ============ 3. TÓM TẮT ĐỊNH GIÁ ============ -->
+    <div class="section-title">2. Tóm tắt định giá</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Phương pháp định giá</th>
+                <th class="text-right">Trọng số</th>
+                <th class="text-right">Giá ngụ ý (VND)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Mô hình Nội tại ({{ intrinsic_method }})</td>
+                <td class="text-right">{{ weight_intrinsic }}%</td>
+                <td class="text-right">{{ intrinsic_price }}</td>
+            </tr>
+            <tr>
+                <td>Mô hình So sánh ({{ relative_method }})</td>
+                <td class="text-right">{{ weight_relative }}%</td>
+                <td class="text-right">{{ relative_price }}</td>
+            </tr>
+            <tr style="font-weight: bold; background-color: #F8FAFC;">
+                <td>Giá mục tiêu pha trộn (Blended Target)</td>
+                <td class="text-right">100%</td>
+                <td class="text-right">{{ target_price }}</td>
+            </tr>
+        </tbody>
+    </table>
+    {% if chart_football %}
+    <div class="chart-container"><img class="chart-img" src="{{ chart_football }}" alt="Football Field"></div>
+    {% endif %}
+
+    <!-- ============ 4. TỔNG QUAN DOANH NGHIỆP ============ -->
+    <div class="section-title">3. Tổng quan doanh nghiệp</div>
+    {% if narrative.ai_generated %}<span class="ai-notice">⚠ Nháp do AI tạo — cần analyst review</span>{% endif %}
+    <div class="narrative">{{ narrative.overview }}</div>
+
+    <!-- ============ 5. BỐI CẢNH NGÀNH ============ -->
+    <div class="section-title">4. Bối cảnh ngành</div>
+    {% if narrative.ai_generated %}<span class="ai-notice">⚠ Nháp do AI tạo — cần analyst review</span>{% endif %}
+    <div class="narrative">{{ narrative.industry }}</div>
+
+    <!-- ============ KỸ THUẬT, DÒNG TIỀN & VỊ THẾ THỊ TRƯỜNG ============ -->
+    <div class="section-title">4A. Kỹ thuật, dòng tiền & vị thế thị trường</div>
+    {% if narrative.ai_generated %}<span class="ai-notice">⚠ Nháp do AI tạo — cần analyst review</span>{% endif %}
+    <div class="narrative">{{ narrative.market_view }}</div>
+
+    <!-- ============ 6. PHÂN TÍCH TÀI CHÍNH LỊCH SỬ ============ -->
+    <div class="section-title">5. Phân tích tài chính lịch sử</div>
+    <table>
+        <thead>
+            <tr><th>Chỉ tiêu (tỷ đồng)</th>{% for h in hist.headers %}<th class="text-right">{{ h }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+            {% for row in hist.rows %}
+            <tr><td>{{ row.label }}</td>{% for v in row['values'] %}<td class="text-right">{{ v }}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if chart_history %}
+    <div class="chart-container"><img class="chart-img" src="{{ chart_history }}" alt="Lịch sử & dự phóng DT/LNST"></div>
+    {% endif %}
+    {% if chart_profitability %}
+    <div class="chart-container"><img class="chart-img" src="{{ chart_profitability }}" alt="ROE & biên lợi nhuận"></div>
+    {% endif %}
+
+    <!-- ============ 7. GIẢ ĐỊNH DỰ PHÓNG ============ -->
+    <div class="section-title">6. Giả định dự phóng</div>
+    <table>
+        <thead>
+            <tr><th>Giả định</th>{% for c in proj_cols %}<th class="text-right">{{ c }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+            {% for row in assumptions.schedule_rows %}
+            <tr><td>{{ row.label }}</td>{% for v in row['values'] %}<td class="text-right">{{ v }}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <table style="width: 60%;">
+        <tbody>
+            {% for row in assumptions.single_rows %}
+            <tr><td>{{ row.label }}</td><td class="text-right"><b>{{ row.value }}</b></td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- ============ 8. CHI TIẾT ĐỊNH GIÁ ============ -->
+    <div class="section-title">7. Chi tiết định giá</div>
+    <p style="font-size:13px;"><b>7.1. Bảng dự phóng tài chính 5 năm (tỷ đồng)</b></p>
+    <table>
+        <thead>
+            <tr><th>Chỉ tiêu</th>{% for c in proj_cols %}<th class="text-right">{{ c }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+            {% for row in proj_rows %}
+            <tr><td>{{ row.label }}</td>{% for v in row['values'] %}<td class="text-right">{{ v }}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p style="font-size:13px;"><b>7.2. Bóc tách chi phí vốn (CAPM / WACC)</b></p>
+    <table style="width: 70%;">
+        <tbody>
+            {% for row in wacc_rows %}
+            <tr><td>{{ row.label }}</td><td class="text-right"><b>{{ row.value }}</b></td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if consensus %}
+    <p style="font-size:13px;"><b>7.3. So sánh với định giá các công ty chứng khoán</b></p>
+    <table style="width: 80%;">
+        <tbody>
+            <tr><td>Giá mục tiêu của mô hình VN100</td><td class="text-right"><b>{{ "{:,.0f}".format(consensus.our_target) }} VND</b></td></tr>
+            <tr><td>Trung vị consensus CTCK ({{ consensus.n_reports }} báo cáo, 180 ngày)</td><td class="text-right">{{ "{:,.0f}".format(consensus.consensus_median) }} VND</td></tr>
+            {% if consensus.range_min and consensus.range_max %}
+            <tr><td>Dải giá mục tiêu CTCK ({{ consensus.n_brokers }} CTCK)</td><td class="text-right">{{ "{:,.0f}".format(consensus.range_min) }} – {{ "{:,.0f}".format(consensus.range_max) }} VND</td></tr>
+            {% endif %}
+            {% if consensus.current_price %}
+            <tr><td>Thị giá hiện tại</td><td class="text-right">{{ "{:,.0f}".format(consensus.current_price) }} VND</td></tr>
+            {% endif %}
+            <tr><td>Chênh lệch mô hình vs trung vị CTCK</td><td class="text-right"><b>{{ "{:+.1%}".format(consensus.deviation) }}</b>{% if consensus.flag_high %} ⚠ lệch lớn — cần rà soát giả định{% endif %}</td></tr>
+        </tbody>
+    </table>
+
+    {% if consensus.broker_rows %}
+    <p style="font-size:12.5px; margin-top:10px;"><b>Chi tiết khuyến nghị từng CTCK</b> (báo cáo mới nhất của mỗi CTCK trong 180 ngày):</p>
+    <table>
+        <thead>
+            <tr><th>CTCK</th><th>Ngày BC</th><th class="text-right">Giá mục tiêu (VND)</th><th>Khuyến nghị</th><th class="text-right">Mô hình so với CTCK</th></tr>
+        </thead>
+        <tbody>
+            {% for b in consensus.broker_rows %}
+            <tr>
+                <td><b>{{ b.broker }}</b></td>
+                <td>{{ b.report_date }}</td>
+                <td class="text-right">{{ "{:,.0f}".format(b.target_price) }}</td>
+                <td>{{ b.rating }}</td>
+                <td class="text-right" style="{% if b.vs_model < -0.25 %}color:#DC2626; font-weight:bold;{% elif b.vs_model > 0.25 %}color:#16A34A; font-weight:bold;{% endif %}">{{ "{:+.1%}".format(b.vs_model) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if consensus.synthesis %}
+    <p style="font-size:12.5px; margin-top:12px;"><b>Tổng hợp luận điểm các CTCK</b> <span style="color:#B45309; font-size:11px;">(AI tổng hợp từ báo cáo CTCK — cần analyst review · nguồn: {{ consensus.synthesis.brokers }})</span></p>
+
+    <div style="border-left:4px solid #16A34A; background:#F0FDF4; padding:8px 14px; margin:8px 0; page-break-inside:avoid;">
+        <p style="font-size:12.5px; margin:0 0 4px 0; color:#166534;"><b>Điểm CHUNG các CTCK đồng thuận</b></p>
+        <ul style="font-size:12px; margin:0; padding-left:18px;">
+            {% for it in consensus.synthesis.diem_chung %}<li>{{ it }}</li>{% endfor %}
+        </ul>
+    </div>
+
+    <div style="border-left:4px solid #D97706; background:#FFFBEB; padding:8px 14px; margin:8px 0; page-break-inside:avoid;">
+        <p style="font-size:12.5px; margin:0 0 4px 0; color:#92400E;"><b>Điểm RIÊNG / khác biệt giữa các CTCK</b></p>
+        <ul style="font-size:12px; margin:0; padding-left:18px;">
+            {% for it in consensus.synthesis.diem_rieng %}<li>{{ it }}</li>{% endfor %}
+        </ul>
+    </div>
+
+    <div style="border-left:4px solid #1D4ED8; background:#EFF6FF; padding:8px 14px; margin:8px 0; page-break-inside:avoid;">
+        <p style="font-size:12.5px; margin:0 0 4px 0; color:#1E40AF;"><b>Điểm MẤU CHỐT — thị trường có thể bỏ sót</b></p>
+        <ul style="font-size:12px; margin:0; padding-left:18px;">
+            {% for it in consensus.synthesis.diem_mau_chot %}<li>{{ it }}</li>{% endfor %}
+        </ul>
+    </div>
+
+    {% if consensus.synthesis.doi_chieu_noi_bo %}
+    <div style="border-left:4px solid #7C3AED; background:#F5F3FF; padding:8px 14px; margin:8px 0; page-break-inside:avoid;">
+        <p style="font-size:12.5px; margin:0 0 4px 0; color:#5B21B6;"><b>Đối chiếu mô hình nội bộ vs đồng thuận</b></p>
+        <p style="font-size:12px; margin:0;">{{ consensus.synthesis.doi_chieu_noi_bo }}</p>
+    </div>
+    {% endif %}
+    {% endif %}
+    {% endif %}
+
+    <!-- ============ 9. ĐỘ NHẠY & KỊCH BẢN ============ -->
+    <div class="section-title">8. Phân tích độ nhạy & kịch bản</div>
+    {% if scenarios and scenarios.applicable %}
+    <table style="width: 75%;">
+        <thead>
+            <tr><th>Kịch bản</th><th class="text-right">Giá mục tiêu (VND)</th><th class="text-right">Upside</th></tr>
+        </thead>
+        <tbody>
+            {% for r in scenarios.rows %}
+            <tr {% if r.scenario == 'Base' %}style="font-weight:bold; background:#F8FAFC;"{% endif %}>
+                <td>{{ r.scenario }}</td>
+                <td class="text-right">{{ "{:,.0f}".format(r.target) }}</td>
+                <td class="text-right">{{ "{:+.1%}".format(r.upside) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% elif scenarios %}
+    <p style="font-size:12.5px; color:#64748B;">Phương pháp định giá hiện tại (proxy từ giá trị sổ sách) không co giãn theo giả định tăng trưởng/biên — bảng kịch bản Bull/Bear không áp dụng.</p>
+    {% endif %}
+    <p style="font-size:13px;">Bảng độ nhạy 2 chiều của giá mục tiêu theo chi phí vốn và tăng trưởng vĩnh viễn g:</p>
+    {% if chart_heatmap %}
+    <div class="chart-container"><img class="chart-img" src="{{ chart_heatmap }}" alt="Sensitivity Heatmap"></div>
+    {% endif %}
+
+    <!-- ============ 10. RỦI RO ĐẦU TƯ ============ -->
+    <div class="section-title">9. Rủi ro đầu tư</div>
+    {% if narrative.ai_generated %}<span class="ai-notice">⚠ Nháp do AI tạo — cần analyst review</span>{% endif %}
+    <div class="narrative">{{ narrative.risks }}</div>
+    {% if flags %}
+    <p style="font-size:12.5px; margin-top:10px;"><b>Cờ kiểm soát chất lượng (QC flags) từ hệ thống:</b><br>
+        {% for f in flags %}<span class="flag-chip">{{ f }}</span>{% endfor %}
+    </p>
+    {% endif %}
+    {% if notes %}
+    <p style="font-size:12.5px;"><b>Ghi chú của analyst:</b> {{ notes }}</p>
+    {% endif %}
+
+    <!-- ============ 11. PHỤ LỤC ============ -->
+    <div class="section-title">10. Phụ lục — Báo cáo tài chính lịch sử</div>
+    <p style="font-size:13px;"><b>Kết quả kinh doanh (tỷ đồng)</b></p>
+    <table>
+        <thead><tr><th>Chỉ tiêu</th>{% for h in appendix.headers %}<th class="text-right">{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody>
+            {% for row in appendix.income_statement %}
+            <tr><td>{{ row.label }}</td>{% for v in row['values'] %}<td class="text-right">{{ v }}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p style="font-size:13px;"><b>Cân đối kế toán (tỷ đồng)</b></p>
+    <table>
+        <thead><tr><th>Chỉ tiêu</th>{% for h in appendix.headers %}<th class="text-right">{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody>
+            {% for row in appendix.balance_sheet %}
+            <tr><td>{{ row.label }}</td>{% for v in row['values'] %}<td class="text-right">{{ v }}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if appendix.cash_flow %}
+    <p style="font-size:13px;"><b>Lưu chuyển tiền tệ (tỷ đồng)</b></p>
+    <table>
+        <thead><tr><th>Chỉ tiêu</th>{% for h in appendix.headers %}<th class="text-right">{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody>
+            {% for row in appendix.cash_flow %}
+            <tr><td>{{ row.label }}</td>{% for v in row['values'] %}<td class="text-right">{{ v }}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="disclaimer">
+        <b>Miễn trừ trách nhiệm:</b> Báo cáo được tạo tự động bởi Hệ thống định giá VN100 và là bản nháp phục vụ
+        phân tích nội bộ. Các phần văn bản do AI sinh cần được analyst thẩm định trước khi sử dụng. Kết quả định giá
+        phụ thuộc hoàn toàn vào giả định đầu vào; báo cáo không cấu thành khuyến nghị mua/bán chứng khoán cho bất kỳ
+        bên thứ ba nào.
+    </div>
+</body>
+</html>

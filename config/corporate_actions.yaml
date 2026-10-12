@@ -1,0 +1,54 @@
+shares_outstanding_events:
+  - ticker: ACB
+    effective_date: "2026-06-29"
+    shares_outstanding: 5804421957
+    source_url: "https://vsdc.vn/vi/s-detail/9"
+    note: "VSDC cập nhật 667.765.358 cổ phiếu trả cổ tức năm 2025."
+  - ticker: CTG
+    effective_date: "2026-01-09"
+    shares_outstanding: 7766944637
+    source_url: "https://vsdc.vn/vi/s-detail/273"
+    note: "VSDC cập nhật 2.396.952.889 cổ phiếu trả cổ tức."
+  - ticker: PVT
+    effective_date: "2026-08-11"
+    shares_outstanding: 516918938
+    source_url: "https://vsdc.vn/vi/s-detail/1500"
+    note: "VSDC cập nhật 46.987.703 cổ phiếu trả cổ tức năm 2025."
+  - ticker: GAS
+    effective_date: "2025-09-26"
+    shares_outstanding: 2412949756
+    source_url: "https://vsd.vn/vi/ad1/187620"
+    note: "VSDC xác nhận tổng số lượng cổ phiếu sau đăng ký bổ sung."
+  # D48 (02/10/2026): corporate_actions (VCI) thiếu ngày GDKHQ các đợt dưới → engine giữ số cp cũ
+  # trong khi giá đã điều chỉnh. Số sau sự kiện = số VSDC đăng ký trước sự kiện × (1 + tỷ lệ),
+  # TẠM TÍNH (phần lẻ bị hủy < 0,01%) — thay bằng số VSDC "điều chỉnh SLCK đăng ký" khi có.
+  - ticker: FPT
+    effective_date: "2026-09-21"
+    shares_outstanding: 1885759064
+    source_url: "https://vsdc.vn/vi/ad/200218"
+    note: "Thưởng 10%, GDKHQ 21/09/2026; trước sự kiện 1.714.326.422 cp (VSDC 11/08/2026). Tạm tính."
+  - ticker: PHR
+    effective_date: "2026-09-11"
+    shares_outstanding: 243898556
+    source_url: "https://vsdc.vn/vi/ad/199662"
+    note: "Thưởng 80%, GDKHQ 11/09/2026; trước sự kiện 135.499.198 cp. Tạm tính."
+  - ticker: VPB
+    effective_date: "2026-09-24"
+    shares_outstanding: 9999999819
+    source_url: "https://vsdc.vn/vi/ad/200270"
+    note: "Cổ tức CP 26,04104%, GDKHQ 24/09/2026; trước sự kiện 7.933.923.601 cp. Tạm tính."
+  - ticker: GMD
+    effective_date: "2026-08-11"
+    shares_outstanding: 432892509
+    source_url: "https://vsdc.vn/vi/ad/199121"
+    note: "VSDC đăng ký bổ sung 6.397.400 cp ESOP (11/08/2026)."
+  - ticker: GMD
+    effective_date: "2026-10-07"
+    shares_outstanding: 649338763
+    source_url: "https://vsdc.vn/vi/ad/200797"
+    note: "Thưởng 50%, ĐKCC 08/10/2026 → GDKHQ dự kiến 07/10/2026. Tạm tính; chỉ hiệu lực khi có giá từ GDKHQ."
+  - ticker: HDB
+    effective_date: "2026-10-09"
+    shares_outstanding: 6506859219
+    source_url: "https://vsdc.vn/vi/ad/200896"
+    note: "Cổ tức CP 25% + thưởng 5%, ĐKCC 12/10/2026 → GDKHQ dự kiến 09/10/2026; trước 5.005.276.323 cp. Tạm tính."

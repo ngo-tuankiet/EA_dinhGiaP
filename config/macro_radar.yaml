@@ -1,0 +1,87 @@
+macro_indicators:
+  # 2.1 Lãi suất & tiền tệ
+  - sector: ALL
+    indicator_code: TPCP_10Y
+    frequency: DAILY
+    source: SBV/HNX
+    warn_low: 0.02
+    warn_high: 0.06
+    mapped_driver: risk_free_rate
+  - sector: Ngân hàng
+    indicator_code: REPO_RATE
+    frequency: EVENT
+    source: SBV
+    warn_low: 0.03
+    warn_high: 0.07
+    mapped_driver: null # Chỉ theo dõi
+  - sector: Ngân hàng
+    indicator_code: INTERBANK_1M
+    frequency: DAILY
+    source: SBV
+    warn_low: 0.01
+    warn_high: 0.08
+    mapped_driver: null # Chỉ theo dõi
+  - sector: Ngân hàng
+    indicator_code: DEPOSIT_RATE_AVERAGE
+    frequency: MONTHLY
+    source: SBV
+    warn_low: 0.03
+    warn_high: 0.09
+    mapped_driver: null # Chỉ theo dõi
+
+  # 2.2 Tỷ giá
+  - sector: Technology
+    indicator_code: USD_VND
+    frequency: DAILY
+    source: SBV
+    warn_low: 23000.0
+    warn_high: 26000.0
+    mapped_driver: null # Chỉ theo dõi
+
+  # 2.3 Tăng trưởng & sản xuất
+  - sector: ALL
+    indicator_code: GDP_GROWTH
+    frequency: QUARTERLY
+    source: GSO
+    warn_low: 0.04
+    warn_high: 0.08
+    mapped_driver: null # Chỉ theo dõi
+  - sector: Thép
+    indicator_code: IIP_STEEL
+    frequency: MONTHLY
+    source: GSO
+    warn_low: -0.05
+    warn_high: 0.20
+    mapped_driver: null # Chỉ theo dõi
+
+  # 2.5 Tín dụng, đầu tư công & FDI
+  - sector: Ngân hàng
+    indicator_code: CREDIT_GROWTH
+    frequency: MONTHLY
+    source: SBV
+    warn_low: 0.05
+    warn_high: 0.16
+    mapped_driver: credit_growth
+  - sector: Thép
+    indicator_code: STATE_INVESTMENT_DISBURSEMENT
+    frequency: MONTHLY
+    source: MOF
+    warn_low: 0.30
+    warn_high: 0.95
+    mapped_driver: null # Chỉ theo dõi
+
+  # 2.7 Hàng hóa toàn cầu (commodity deck)
+  - sector: Thép
+    indicator_code: STEEL_HRC
+    frequency: WEEKLY
+    source: LME/SHFE
+    warn_low: 3000.0
+    warn_high: 6000.0
+    mapped_driver: ebit_margin
+  - sector: Thép
+    indicator_code: IRON_ORE
+    frequency: WEEKLY
+    source: Bloomberg
+    warn_low: 80.0
+    warn_high: 150.0
+    mapped_driver: null # Chỉ theo dõi
