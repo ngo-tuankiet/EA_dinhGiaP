@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import bisect
 import datetime
+import statistics
 from collections.abc import Iterable
 from math import isfinite
 from typing import Any
@@ -202,120 +204,105 @@ def _event_investment_note(
     return "Sự kiện này chưa đủ để thay đổi luận điểm đầu tư tổng thể."
 
 
-def _ranking_data_caveat(ranking_row: dict[str, Any]) -> str | None:
-    codes = {str(flag).split(":", 1)[0] for flag in ranking_row.get("flags", [])}
-    caveats = []
-    if "STALE_PRICE" in codes:
-        caveats.append("giá xếp hạng cần cập nhật")
-    reasons = {
-        reason
-        for profile in ranking_row.get("profiles", {}).values()
-        for reason in profile.get("reasons", [])
-    }
-    if "Chưa đạt tiêu chí chất lượng" in reasons:
-        caveats.append("chất lượng kinh doanh chưa đạt")
-    if "Chưa đạt tiêu chí sức khỏe tài chính" in reasons:
-        caveats.append("sức khỏe tài chính chưa đạt")
-    if "Thanh khoản thiếu dữ liệu hoặc dưới ngưỡng" in reasons:
-        caveats.append("thanh khoản chưa được xác nhận")
-    return ", ".join(caveats[:2]) if caveats else None
-
-
-def quick_investment_opinion(
+def dividend_track_record(
     *,
-    event_type: str,
-    event_analysis: dict[str, Any],
-    ranking_row: dict[str, Any] | None,
+    cash_events: Iterable[tuple[datetime.date, float]],
+    closes: Iterable[tuple[datetime.date, float]],
+    index_closes: Iterable[tuple[datetime.date, float]],
+    as_of: datetime.date,
+    post_sessions: int,
+    consistency_years: int,
+) -> dict[str, Any]:
+    """Số liệu cho nhận định cổ tức (D56): tỷ suất tiền mặt 12 tháng, độ đều, và giá sau GDKHQ.
+
+    Giá trong DB đã điều chỉnh cổ tức (ngày GDKHQ không còn khoảng tụt bằng cổ tức), nên biến động giá
+    điều chỉnh từ phiên trước GDKHQ tới `post_sessions` phiên sau đã gồm cổ tức — không cộng cổ tức
+    lần nữa. So với VN-Index cùng ngày để tách phần "cả thị trường cùng tăng".
+    """
+    events = {}
+    for day, cash in cash_events:
+        if day <= as_of and cash and cash > 0:
+            events[day] = max(
+                events.get(day, 0.0), float(cash)
+            )  # nhiều nguồn cùng ngày = bản trùng
+    series = sorted((d, float(c)) for d, c in closes if d <= as_of and c and c > 0)
+    index = sorted((d, float(c)) for d, c in index_closes if d <= as_of and c and c > 0)
+    price = series[-1][1] if series else None
+    ttm = sum(c for d, c in events.items() if (as_of - d).days < 365)
+    years = {
+        d.year for d in events if as_of.year - consistency_years <= d.year < as_of.year
+    }
+
+    def index_at(day: datetime.date) -> float | None:
+        i = bisect.bisect_right([d for d, _ in index], day) - 1
+        return index[i][1] if i >= 0 else None
+
+    days = [d for d, _ in series]
+    excess = []
+    for ex in sorted(events):
+        i = bisect.bisect_left(days, ex)
+        if i < 1 or i - 1 + post_sessions >= len(series):
+            continue  # thiếu giá trước GDKHQ hoặc chưa đủ số phiên sau
+        (d0, p0), (d1, p1) = series[i - 1], series[i - 1 + post_sessions]
+        i0, i1 = index_at(d0), index_at(d1)
+        if i0 and i1:
+            excess.append((p1 / p0 - 1) - (i1 / i0 - 1))
+    return {
+        "price": price,
+        "ttm_cash_vnd": ttm,
+        "yield_pct": ttm / price * 100 if price else None,
+        "paid_years": len(years),
+        "consistency_years": consistency_years,
+        "events": len(excess),
+        "hits": sum(x > 0 for x in excess),
+        "median_excess_pct": statistics.median(excess) * 100 if excess else None,
+    }
+
+
+def dividend_opinion(
+    *,
+    upside_pct: float | None,
+    data_note: str,
+    liquidity_low: bool,
+    record: dict[str, Any],
+    event_note: str,
+    min_yield_pct: float,
+    min_events: int,
+    min_hit_rate: float,
+    post_sessions: int,
 ) -> str:
-    """Nhận định sàng lọc ngắn; sự kiện đơn lẻ không được nâng mã thành khuyến nghị."""
-    event_note = _event_investment_note(event_type, event_analysis)
-    if not ranking_row:
-        return (
-            "CHƯA ĐỦ CƠ SỞ — chưa có hồ sơ xếp hạng mới nhất cho mã này. "
-            f"{event_note}"
-        )
-
-    flags = {str(flag).split(":", 1)[0] for flag in ranking_row.get("flags", [])}
-    profiles = ranking_row.get("profiles", {})
-    profile_values = [
-        profile for profile in profiles.values() if isinstance(profile, dict)
-    ]
-    scores = [
-        float(profile["score"])
-        for profile in profile_values
-        if isinstance(profile.get("score"), (int, float)) and isfinite(profile["score"])
-    ]
-    eligible_profiles = [
-        key
-        for key, profile in profiles.items()
-        if isinstance(profile, dict) and profile.get("eligible")
-    ]
-    upside = ranking_row.get("upside_pct")
-    valid_upside = (
-        isinstance(upside, (int, float))
-        and not isinstance(upside, bool)
-        and isfinite(upside)
+    """Nhận định theo 3 tiêu chí (người dùng chọn, D56): upside mô hình dương; cổ tức tiền mặt tốt và
+    đều; lịch sử giá sau GDKHQ vượt VN-Index. Sàng lọc để nghiên cứu, không phải lệnh mua.
+    """
+    if data_note:
+        return f"CHƯA ĐỦ CƠ SỞ — {data_note}. {event_note}"
+    y, ev, hits, med = (
+        record.get(k) for k in ("yield_pct", "events", "hits", "median_excess_pct")
     )
-
-    unrateable = flags.intersection(_UNRATEABLE_FLAG_CODES)
-    if ranking_row.get("error") or unrateable or not scores:
-        check_errors = [
-            str(check.get("message") or "").strip()
-            for check in ranking_row.get("checks", [])
-            if check.get("severity") == "error" and check.get("message")
-        ]
-        if "SOURCE_CONFLICT" in flags:
-            return (
-                "CẦN ĐỐI CHIẾU DỮ LIỆU — số liệu giữa các nguồn đang xung đột; "
-                f"chưa nên xuống tiền. {event_note}"
-            )
-        if flags.intersection({"VALUATION_PROXY", "PROXY_IMPLAUSIBLE"}):
-            method = str(ranking_row.get("method") or "định giá")
-            return (
-                f"CHƯA THỂ ĐỊNH GIÁ — mô hình {method} mới là bản tham chiếu, "
-                f"chưa hoàn thiện để kết luận. {event_note}"
-            )
-        if check_errors:
-            return (
-                f"CẦN KIỂM TRA BCTC — {check_errors[0][:180]} "
-                f"Chưa nên xuống tiền. {event_note}"
-            )
-        if ranking_row.get("error"):
-            reason = str(ranking_row["error"])[:180]
-        elif "DATA_REVIEW_REQUIRED" in flags:
-            reason = "dữ liệu tài chính cần kiểm tra lại"
-        else:
-            reason = "chưa có định giá đủ tin cậy"
-        return f"CHƯA ĐỦ CƠ SỞ — {reason}; chưa nên xuống tiền. {event_note}"
-
-    caveat = _ranking_data_caveat(ranking_row)
-    caveat_text = f"; lưu ý {caveat}" if caveat else ""
-    if eligible_profiles:
-        profile_label = (
-            "thận trọng và tăng trưởng"
-            if len(eligible_profiles) > 1
-            else "thận trọng" if eligible_profiles[0] == "defensive" else "tăng trưởng"
-        )
-        valuation_text = (
-            f", định giá còn dư địa {float(upside):+.1f}%" if valid_upside else ""
-        )
+    paid, need = record.get("paid_years", 0), record.get("consistency_years", 0)
+    c1 = upside_pct is not None and upside_pct > 0
+    c2 = y is not None and y >= min_yield_pct and paid >= need
+    c3 = bool(ev) and ev >= min_events and hits / ev >= min_hit_rate and (med or 0) > 0
+    facts = [
+        f"upside {upside_pct:+.1f}%" if upside_pct is not None else "chưa có upside",
+        (f"cổ tức tiền {y:.1f}%/12 tháng" if y is not None else "chưa có giá")
+        + f", trả đều {paid}/{need} năm",
+        f"sau GDKHQ {post_sessions} phiên: {hits}/{ev} lần vượt VN-Index"
+        + (f" (trung vị {med:+.1f}%)" if med is not None else ""),
+    ]
+    tail = "; ".join(facts) + ("; thanh khoản thấp" if liquidity_low else "")
+    if not c1:
         return (
-            f"ĐÁNG NGHIÊN CỨU SÂU — đã qua bộ lọc tích sản {profile_label}"
-            f"{valuation_text}{caveat_text}. {event_note}"
+            f"CHƯA HẤP DẪN — giá trị hợp lý không cao hơn thị giá; {tail}. {event_note}"
         )
-
-    if valid_upside and float(upside) < 0:
-        return (
-            "CHƯA HẤP DẪN — giá trị hợp lý đang thấp hơn thị giá "
-            f"{abs(float(upside)):.1f}%{caveat_text}; chưa nên mua chỉ vì sự kiện. "
-            f"{event_note}"
-        )
-    if valid_upside:
-        return (
-            f"THEO DÕI, CHƯA VỘI MUA — định giá còn dư địa {float(upside):+.1f}% "
-            f"nhưng chưa qua bộ lọc tích sản{caveat_text}. {event_note}"
-        )
-    return f"CHƯA ĐỦ CƠ SỞ — chưa có định giá sử dụng được. {event_note}"
+    passed = c1 + c2 + c3
+    if passed == 3:
+        return f"ĐẠT 3/3 — đáng cân nhắc; {tail}. {event_note}"
+    missing = [
+        n for ok, n in ((c2, "cổ tức tốt & đều"), (c3, "lịch sử sau GDKHQ")) if not ok
+    ]
+    label = "THEO DÕI" if passed == 2 else "CHƯA ĐẠT"
+    return f"{label} — đạt {passed}/3, thiếu {', '.join(missing)}; {tail}. {event_note}"
 
 
 def _pct(current: float, base: float) -> float | None:

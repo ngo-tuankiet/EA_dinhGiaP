@@ -167,6 +167,12 @@ corporate_actions:
   price_impact_long_sessions: 20
   reaction_materiality_pct: 2.0
   attractive_dividend_yield_pct: 5.0
+  # Nhận định nhanh lịch quyền VN100 (D56, người dùng chọn 3 tiêu chí): upside mô hình > 0; cổ tức TIỀN MẶT
+  # 12 tháng ≥ attractive_dividend_yield_pct và trả đều dividend_consistency_years năm gần nhất; giá điều
+  # chỉnh price_impact_long_sessions phiên sau GDKHQ vượt VN-Index ở ≥ dividend_min_hit_rate số lần (≥ min_events).
+  dividend_consistency_years: 3
+  dividend_min_events: 3
+  dividend_min_hit_rate: 0.6
   dilution_warning_pct: 10.0
   # Vốn điều lệ BCTC đã tăng ≥ (1+tỷ lệ)×(1−tol) so với trước GDKHQ → coi như đã phản ánh.
   split_reflected_tolerance: 0.02

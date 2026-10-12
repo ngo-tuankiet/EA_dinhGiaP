@@ -12,6 +12,7 @@ from valuation.analysis.corporate_actions import (
     analyze_corporate_action,
     analyze_historical_price_impact,
     assess_corporate_action,
+    dividend_track_record,
     explain_historical_price_impact,
     explain_upcoming_action,
 )
@@ -365,4 +366,60 @@ def corporate_actions_context(
         "source_warning": (
             "VCI là nguồn tổng hợp. Sự kiện chưa có nguồn OFFICIAL cần đối chiếu VSDC/HOSE/HNX/IR trước quyết định."
         ),
+    }
+
+
+def load_dividend_track_records(
+    db: Session,
+    tickers: list[str],
+    *,
+    as_of: datetime.date,
+    history_years: int,
+    post_sessions: int,
+    consistency_years: int,
+) -> dict[str, dict[str, Any]]:
+    """{mã: dividend_track_record} cho các mã trong lịch quyền — một lượt đọc DB cho cả nhóm (D56)."""
+    if not tickers:
+        return {}
+    start = as_of - datetime.timedelta(days=366 * history_years)
+    cash: dict[str, list[tuple[datetime.date, float]]] = {}
+    for t, ex, amount in (
+        db.query(
+            CorporateAction.ticker,
+            CorporateAction.ex_right_date,
+            CorporateAction.cash_amount_vnd_per_share,
+        )
+        .filter(
+            CorporateAction.ticker.in_(tickers),
+            CorporateAction.event_type == "CASH_DIVIDEND",
+            CorporateAction.ex_right_date.is_not(None),
+            CorporateAction.ex_right_date >= start,
+            CorporateAction.ex_right_date <= as_of,
+        )
+        .all()
+    ):
+        if amount is not None:
+            cash.setdefault(t, []).append((ex, float(amount)))
+    closes: dict[str, list[tuple[datetime.date, float]]] = {}
+    for t, day, close in (
+        db.query(PricesDaily.ticker, PricesDaily.trade_date, PricesDaily.close)
+        .filter(
+            PricesDaily.ticker.in_([*tickers, "VNINDEX"]),
+            PricesDaily.trade_date >= start - datetime.timedelta(days=10),
+            PricesDaily.trade_date <= as_of,
+        )
+        .all()
+    ):
+        if close is not None:
+            closes.setdefault(t, []).append((day, float(close)))
+    return {
+        t: dividend_track_record(
+            cash_events=cash.get(t, []),
+            closes=closes.get(t, []),
+            index_closes=closes.get("VNINDEX", []),
+            as_of=as_of,
+            post_sessions=post_sessions,
+            consistency_years=consistency_years,
+        )
+        for t in tickers
     }

@@ -31,6 +31,20 @@ def fingerprint(value: Any) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def traded_values(prices: list[Any]) -> list[float]:
+    """GTGD từng phiên. Cột `value` trống (vnstock không trả) → ước lượng giá đóng cửa × khối lượng.
+
+    Trước đây chỉ đọc `value` → không mã nào đủ 20 phiên → mọi mã "thanh khoản không đạt" (D56).
+    """
+    out = []
+    for x in prices:
+        if x.value is not None and x.value > 0:
+            out.append(float(x.value))
+        elif x.close and x.volume:
+            out.append(float(x.close) * float(x.volume))
+    return out
+
+
 def previous_session_day(today: date) -> date:
     """Chỉ dùng phiên đã kết thúc trước ngày chạy, tránh giá dở phiên lúc 09:30."""
     day = today - timedelta(days=1)
@@ -207,7 +221,7 @@ def build_ranking_row(
     metrics = financial_metrics(company, as_of)
     if metrics["history_years"] < cfg["min_history_years"]:
         row["blockers"].append("Chưa đủ lịch sử kinh doanh nhiều năm")
-    values = [float(x.value) for x in prices if x.value is not None and x.value > 0]
+    values = traded_values(prices)
     row["liquidity_ok"] = (
         len(values) == len(prices) == 20
         and sum(values) / len(values) >= cfg["scales"]["min_traded_value_vnd"]

@@ -11,16 +11,18 @@ import pandas as pd
 import streamlit as st
 
 from valuation.analysis.corporate_actions import (
+    _event_investment_note,
     analyze_corporate_action,
     analyze_historical_price_impact,
     assess_corporate_action,
+    dividend_opinion,
     explain_historical_price_impact,
     explain_upcoming_action,
-    quick_investment_opinion,
 )
 from valuation.config import load_defaults
 from valuation.data_access.corporate_actions import (
     load_corporate_actions,
+    load_dividend_track_records,
     load_upcoming_vn100_corporate_actions,
 )
 from valuation.db.models import PricesDaily
@@ -309,13 +311,14 @@ def _style_impact_table(df: pd.DataFrame) -> Any:
 def _style_quick_opinion_table(df: pd.DataFrame) -> Any:
     def opinion_color(value: Any) -> str:
         text = str(value or "").upper()
-        if text.startswith("ĐÁNG NGHIÊN CỨU"):
+        if text.startswith("ĐẠT 3/3"):
             return "color:#047857;font-weight:750;background-color:#ecfdf5;"
         if text.startswith("THEO DÕI"):
             return "color:#92400e;font-weight:750;background-color:#fffbeb;"
         if text.startswith(
             (
                 "CHƯA HẤP DẪN",
+                "CHƯA ĐẠT",
                 "CHƯA ĐỦ",
                 "CHƯA THỂ",
                 "CẦN ĐỐI CHIẾU",
@@ -646,6 +649,7 @@ def _render_vn100_upcoming_calendar(
     db: Any,
     today: datetime.date,
     future_days: int,
+    cfg: dict[str, Any],
 ) -> None:
     _section_head(
         f"Lịch cổ tức & quyền mua VN100 trong {future_days} ngày tới",
@@ -667,14 +671,47 @@ def _render_vn100_upcoming_calendar(
         )
         return
 
+    from valuation.analysis.investment_ranking import load_ranking_config
+    from valuation.views.vn100_ranking import market_data, ranking_table
+
     snapshot = latest_snapshot() or {}
-    ranking_by_ticker = {
-        row.get("ticker"): row for row in snapshot.get("rows", []) if row.get("ticker")
-    }
+    # Upside + lọc dữ liệu dùng chung với tab VN100 (D55); lịch sử cổ tức đọc một lượt cho cả nhóm (D56).
+    rank = (
+        ranking_table(
+            snapshot, market_data(db), snapshot.get("config", load_ranking_config())
+        ).set_index("Mã")
+        if snapshot
+        else pd.DataFrame()
+    )
+    post = int(cfg.get("price_impact_long_sessions", 20))
+    records = load_dividend_track_records(
+        db,
+        sorted({item.action.ticker for item in items}),
+        as_of=today,
+        history_years=int(cfg.get("history_years", 5)),
+        post_sessions=post,
+        consistency_years=int(cfg.get("dividend_consistency_years", 3)),
+    )
+    names = {r.get("ticker"): r.get("name") for r in snapshot.get("rows", [])}
     table_rows = []
     for item in items:
-        ranking_row = ranking_by_ticker.get(item.action.ticker)
-        current_price = float(ranking_row.get("price") or 0.0) if ranking_row else 0.0
+        t = item.action.ticker
+        row = rank.loc[t] if t in rank.index else None
+        note = (
+            str(row["Ghi chú"])
+            if row is not None
+            else "chưa có trong đợt định giá VN100"
+        )
+        upside = (
+            float(row["Upside (%)"])
+            if row is not None and pd.notna(row["Upside (%)"])
+            else None
+        )
+        current_price = (
+            float(row["Giá (đ)"])
+            if row is not None and pd.notna(row["Giá (đ)"])
+            else 0.0
+        )
         event_analysis = analyze_corporate_action(
             event_type=item.action.event_type,
             current_price_vnd=current_price,
@@ -696,8 +733,9 @@ def _render_vn100_upcoming_calendar(
             ),
         )
         company_name = item.company_name
-        if company_name == item.action.ticker and ranking_row:
-            company_name = ranking_row.get("name") or company_name
+        if company_name == t:
+            company_name = names.get(t) or company_name
+        liquidity_low = note.startswith("Thanh khoản")
         table_rows.append(
             {
                 "Ngày": item.event_date,
@@ -707,10 +745,18 @@ def _render_vn100_upcoming_calendar(
                     else f"{(item.event_date - today).days} ngày"
                 ),
                 "Mã": item.action.ticker,
-                "Nhận định nhanh": quick_investment_opinion(
-                    event_type=item.action.event_type,
-                    event_analysis=event_analysis,
-                    ranking_row=ranking_row,
+                "Nhận định nhanh": dividend_opinion(
+                    upside_pct=upside,
+                    data_note="" if liquidity_low else note,
+                    liquidity_low=liquidity_low,
+                    record=records.get(t, {}),
+                    event_note=_event_investment_note(
+                        item.action.event_type, event_analysis
+                    ),
+                    min_yield_pct=float(cfg.get("attractive_dividend_yield_pct", 5.0)),
+                    min_events=int(cfg.get("dividend_min_events", 3)),
+                    min_hit_rate=float(cfg.get("dividend_min_hit_rate", 0.6)),
+                    post_sessions=post,
                 ),
                 "Sự kiện": _EVENT_LABELS.get(
                     item.action.event_type, item.action.event_type
@@ -721,14 +767,13 @@ def _render_vn100_upcoming_calendar(
         )
     table = pd.DataFrame(table_rows)
     opinions = table["Nhận định nhanh"].astype(str)
-    research_count = int(opinions.str.startswith("ĐÁNG NGHIÊN CỨU").sum())
+    full_count = int(opinions.str.startswith("ĐẠT 3/3").sum())
     watch_count = int(opinions.str.startswith("THEO DÕI").sum())
-    unattractive_count = int(opinions.str.startswith("CHƯA HẤP DẪN").sum())
-    unresolved_count = len(table) - research_count - watch_count - unattractive_count
+    data_count = int(opinions.str.startswith("CHƯA ĐỦ CƠ SỞ").sum())
     st.caption(
-        f"Tổng hợp: {research_count} mã đáng nghiên cứu sâu · "
-        f"{watch_count} mã theo dõi · {unattractive_count} mã chưa hấp dẫn · "
-        f"{unresolved_count} mã cần hoàn thiện mô hình hoặc kiểm tra dữ liệu."
+        f"Tổng hợp: {full_count} sự kiện đạt 3/3 · {watch_count} đạt 2/3 · "
+        f"{len(table) - full_count - watch_count - data_count} chưa đạt/chưa hấp dẫn · "
+        f"{data_count} chưa đủ cơ sở dữ liệu."
     )
     st.dataframe(
         _style_quick_opinion_table(table),
@@ -740,7 +785,7 @@ def _render_vn100_upcoming_calendar(
             "Mã": st.column_config.TextColumn(width="small"),
             "Nhận định nhanh": st.column_config.TextColumn(
                 width="large",
-                help="Kết hợp xếp hạng VN100 mới nhất với tác động riêng của sự kiện.",
+                help="3 tiêu chí: upside mô hình > 0; cổ tức tiền mặt tốt & đều; giá sau GDKHQ vượt VN-Index.",
             ),
         },
     )
@@ -752,8 +797,14 @@ def _render_vn100_upcoming_calendar(
     except (TypeError, ValueError):
         ranking_time = "chưa rõ thời gian"
     st.caption(
-        f"Nhận định dùng snapshot xếp hạng VN100 lúc {ranking_time}. Đây là bước "
-        "sàng lọc để chọn mã nghiên cứu sâu hơn, không phải khuyến nghị mua tự động."
+        f"3 tiêu chí: (1) upside theo đợt định giá VN100 {ranking_time} > 0, không có lỗi dữ liệu; "
+        f"(2) cổ tức tiền mặt 12 tháng ≥ {cfg.get('attractive_dividend_yield_pct', 5.0):g}% thị giá và "
+        f"trả đều {cfg.get('dividend_consistency_years', 3)} năm gần nhất (cổ tức cổ phiếu không tính — "
+        f"không tạo thêm giá trị); (3) giá {post} phiên sau GDKHQ vượt VN-Index ở ≥ "
+        f"{float(cfg.get('dividend_min_hit_rate', 0.6)) * 100:.0f}% số lần (tối thiểu "
+        f"{cfg.get('dividend_min_events', 3)} lần, giá đã điều chỉnh cổ tức). Lưu ý: giá giảm tương ứng "
+        "cổ tức vào ngày GDKHQ, cổ tức tiền chịu thuế 5%; quá khứ không bảo đảm tương lai. "
+        "Sàng lọc để nghiên cứu, không phải khuyến nghị mua."
     )
 
 
@@ -991,4 +1042,5 @@ def render_corporate_actions(
             db=db,
             today=today,
             future_days=int(cfg.get("market_upcoming_days", 90)),
+            cfg=cfg,
         )

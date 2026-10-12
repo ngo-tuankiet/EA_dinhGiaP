@@ -1683,3 +1683,20 @@ RI/DCF đầy đủ của Shinhan không so trực tiếp: kỳ đầu 6 tháng 
   lưu/xuất báo cáo, giá mục tiêu từng CTCK, luận điểm CTCK, lịch quyền VN100; khung chỉ số vĩ mô sidebar; tin vĩ mô
   đóng sẵn. Luôn hiện: thẻ khuyến nghị, nút DeepSeek, biểu đồ tổng quan, bảng kịch bản, KPI CTCK + kết luận hiệu
   chuẩn, sự kiện quyền sắp tới, bảng xếp hạng + 5 mã tích sản. Cảnh báo info/success không bao giờ chiếm ô hiện ngay.
+
+### D56 — Nhận định nhanh lịch quyền: 3 tiêu chí cổ tức; sửa thanh khoản engine (2026-10-12, người dùng chọn)
+- Thay bộ lọc tích sản nghiêm (100/100 mã rớt vì chưa có hồ sơ quản trị, golden test, thanh khoản lỗi, độ phủ)
+  bằng 3 tiêu chí người dùng chọn: (1) upside mô hình > 0 và không lỗi dữ liệu (dùng chung tab VN100);
+  (2) cổ tức TIỀN MẶT 12 tháng ≥ `attractive_dividend_yield_pct` (5%) và trả đều `dividend_consistency_years`
+  (3) năm gần nhất; (3) giá `price_impact_long_sessions` (20) phiên sau GDKHQ vượt VN-Index ở ≥
+  `dividend_min_hit_rate` (60%) số lần, tối thiểu `dividend_min_events` (3). Nhãn: ĐẠT 3/3 / THEO DÕI (2/3) /
+  CHƯA ĐẠT / CHƯA HẤP DẪN (upside ≤ 0) / CHƯA ĐỦ CƠ SỞ. Không bao giờ "MUA".
+- Phản biện đã đưa vào: chỉ tính cổ tức tiền (cổ tức CP/thưởng không tạo giá trị); yêu cầu trả đều (tránh bẫy
+  cổ tức một lần); so với VN-Index (tách "cả thị trường tăng"); mẫu tối thiểu 3 lần; ghi chú thuế 5% và việc giá
+  giảm tương ứng cổ tức ngày GDKHQ.
+- Phát hiện: giá DB đã điều chỉnh cổ tức tiền (254 lần chia: ngày GDKHQ trung vị −0,24% so với lý thuyết −2,9%)
+  → tiêu chí (3) đo trên giá điều chỉnh = tổng lợi nhuận. Hệ quả: `analyze_historical_price_impact` (phân tích
+  chuyên sâu) đang CỘNG cổ tức lần nữa vào "tổng tài sản" cho cổ tức tiền — chưa sửa, chờ duyệt.
+- Engine xếp hạng: `traded_values()` — GTGD = `value` hoặc giá đóng cửa × khối lượng (cột value luôn trống);
+  có hiệu lực từ lần "Định giá lại VN100" tới. Đợt 12/10, ngưỡng 5%: 11 mã VN100 đạt tiêu chí (2), 26 mã đạt (3);
+  17 sự kiện trong 90 ngày tới chưa sự kiện nào đạt 2/3.
