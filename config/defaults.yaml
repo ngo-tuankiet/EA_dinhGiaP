@@ -155,7 +155,7 @@ ddm:
 corporate_actions:
   history_years: 5
   future_days: 365
-  market_upcoming_days: 30
+  market_upcoming_days: 90         # Lịch quyền VN100 cuối tab Cổ tức (người dùng yêu cầu 90 ngày)
   refresh_ttl_hours: 24
   error_retry_minutes: 30
   page_size: 200

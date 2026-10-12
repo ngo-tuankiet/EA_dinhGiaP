@@ -199,6 +199,72 @@ def _section_head(title: str, note: str) -> None:
     )
 
 
+_STOCK_PAYOUTS = ("STOCK_DIVIDEND", "BONUS_SHARE", "STOCK_BONUS_COMBO")
+
+
+def latest_payouts(rows: list[Any], today: datetime.date) -> dict[str, list[Any]]:
+    """Lần chia gần nhất đã thực hiện (mốc ≤ hôm nay): {"cash": [...], "stock": [...]}.
+
+    Gộp các sự kiện cùng mốc (vd cổ tức CP 25% + thưởng 20% cùng ngày GDKHQ) để hiện một lần chia.
+    """
+    out: dict[str, list[Any]] = {}
+    for key, types in (("cash", ("CASH_DIVIDEND",)), ("stock", _STOCK_PAYOUTS)):
+        past = [
+            r
+            for r in rows
+            if r.event_type in types and _anchor(r) and _anchor(r) <= today
+        ]
+        if past:
+            last = max(_anchor(r) for r in past)
+            out[key] = [r for r in past if _anchor(r) == last]
+    return out
+
+
+def _render_latest_payouts(rows: list[Any], today: datetime.date) -> None:
+    latest = latest_payouts(rows, today)
+    _section_head(
+        "Lần chia gần nhất",
+        "Cổ tức tiền mặt và cổ phiếu/thưởng đã thực hiện gần đây nhất trong dữ liệu đã lưu.",
+    )
+    cells = []
+    cash = latest.get("cash")
+    if cash:
+        r = cash[0]  # một lần chia; nhiều nguồn cùng mốc là bản trùng, không cộng dồn
+        sub = f"GDKHQ {_anchor(r):%d/%m/%Y}" + (
+            f" · thanh toán {r.payment_date:%d/%m/%Y}" if r.payment_date else ""
+        )
+        cells.append(("Tiền mặt", f"{_fmt_vnd(r.cash_amount_vnd_per_share)} đ/cp", sub))
+    else:
+        cells.append(("Tiền mặt", "Chưa có", "Không có trong dữ liệu đã lưu"))
+    stock = latest.get("stock")
+    if stock:
+        by_type = {r.event_type: r for r in stock}  # bỏ bản trùng cùng loại
+        value = " + ".join(
+            (
+                f"{float(r.exercise_ratio) * 100:g}%"
+                if r.exercise_ratio is not None
+                else "?"
+            )
+            for r in by_type.values()
+        )
+        kinds = " + ".join(_EVENT_LABELS.get(t, t) for t in by_type)
+        sub = f"{kinds} · GDKHQ {_anchor(stock[0]):%d/%m/%Y}"
+        cells.append(("Cổ phiếu / thưởng", value, sub))
+    else:
+        cells.append(("Cổ phiếu / thưởng", "Chưa có", "Không có trong dữ liệu đã lưu"))
+    body = "".join(
+        f'<div class="ca-mini"><div class="ca-mini-label">{_escape(label)}</div>'
+        f'<div class="ca-mini-value">{_escape(value)}</div>'
+        f'<div class="ca-mini-sub">{_escape(sub)}</div></div>'
+        for label, value, sub in cells
+    )
+    st.markdown(
+        '<div class="ca-card"><div class="ca-mini-grid" style="grid-template-columns: repeat(2, '
+        f'minmax(0, 1fr)); margin-top: 0; padding-top: 0; border-top: 0;">{body}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _style_impact_table(df: pd.DataFrame) -> Any:
     def pct_color(value: Any) -> str:
         text = str(value)
@@ -759,6 +825,7 @@ def render_corporate_actions(
         nearest_days=days_to_nearest,
         historical_count=len(historical_rows),
     )
+    _render_latest_payouts(rows, today)
 
     with st.expander("Hiểu nhanh các con số trong phần này"):
         st.markdown("""
@@ -909,5 +976,5 @@ def render_corporate_actions(
         _render_vn100_upcoming_calendar(
             db=db,
             today=today,
-            future_days=int(cfg.get("market_upcoming_days", 30)),
+            future_days=int(cfg.get("market_upcoming_days", 90)),
         )
