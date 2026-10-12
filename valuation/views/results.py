@@ -331,9 +331,9 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
         f"""
         <div style="background-color: #1E293B; padding: 24px; border-radius: 12px; border-left: 8px solid {rec_color}; margin-bottom: 24px;">
             <h3 style="color: #F8FAFC; margin: 0 0 8px 0; font-family: 'Inter', sans-serif;">KHUYẾN NGHỊ ĐẦU TƯ</h3>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: center;">
                 <div>
-                    <h1 style="color: {rec_color}; margin: 0; font-size: 48px; font-weight: 800; font-family: 'Outfit', sans-serif;">{rec_label}</h1>
+                    <h1 style="color: {rec_color}; margin: 0; font-size: clamp(30px, 9vw, 48px); font-weight: 800; font-family: 'Outfit', sans-serif;">{rec_label}</h1>
                     <p style="color: #94A3B8; margin: 4px 0 0 0;">Upside kỳ vọng: <b>{upside:+.1f}%</b></p>
                 </div>
                 <div style="text-align: right;">
@@ -593,10 +593,10 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
                 **_dark_theme_res,
                 legend={
                     "orientation": "h",
-                    "yanchor": "bottom",
-                    "y": 1.02,
-                    "xanchor": "right",
-                    "x": 1,
+                    "yanchor": "top",
+                    "y": -0.2,
+                    "xanchor": "left",
+                    "x": 0,
                     "font": {"color": "#F8FAFC"},
                     "bgcolor": "rgba(15, 23, 42, 0.9)",
                     "bordercolor": "#334155",
@@ -639,10 +639,10 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
                 **_dark_theme_res,
                 legend={
                     "orientation": "h",
-                    "yanchor": "bottom",
-                    "y": 1.02,
-                    "xanchor": "right",
-                    "x": 1,
+                    "yanchor": "top",
+                    "y": -0.2,
+                    "xanchor": "left",
+                    "x": 0,
                     "font": {"color": "#F8FAFC"},
                     "bgcolor": "rgba(15, 23, 42, 0.9)",
                     "bordercolor": "#334155",

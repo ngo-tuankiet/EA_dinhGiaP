@@ -207,7 +207,7 @@ def render_consensus_compare(
             "Bấm nút **'Tải mới "
             + company.ticker
             + "'** hoặc **'Quét VN100 Hàng Tuần'** "
-            "ở sidebar để thu thập báo cáo CTCK (Simplize/24hmoney) cho mã này.",
+            "ở thanh bên (điện thoại: nút « Chọn mã · Vĩ mô ») để thu thập báo cáo CTCK (Simplize/24hmoney) cho mã này.",
             icon="ℹ️",
         )
         return
@@ -290,7 +290,12 @@ def render_consensus_compare(
             subset=["Tuổi (ngày)"],
         )
     )
-    st.dataframe(styler, width="stretch", hide_index=True)
+    st.dataframe(
+        styler,
+        width="stretch",
+        hide_index=True,
+        column_config={"CTCK": st.column_config.TextColumn(pinned=True)},
+    )
     st.caption(
         "🔴 chênh >25% (mô hình thấp hơn) · 🟢 chênh >25% (mô hình cao hơn) · tuổi đỏ = báo cáo >120 ngày"
     )

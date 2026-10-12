@@ -544,8 +544,14 @@ def render_vn100_ranking() -> None:
         width="stretch",
         height=540,
         column_config={
-            key: st.column_config.NumberColumn(format="%.1f")
-            for key in ("Chênh lệch (%)", "Biên an toàn (%)", "Điểm / 100")
+            # Ghim Hạng + Mã: kéo ngang trên điện thoại vẫn biết đang đọc dòng mã nào.
+            # width="small": Streamlit tự tắt ghim khi bảng hẹp hơn tổng độ rộng cột ghim (~334px).
+            "Hạng": st.column_config.NumberColumn(width="small", pinned=True),
+            "Mã": st.column_config.TextColumn(width="small", pinned=True),
+            **{
+                key: st.column_config.NumberColumn(format="%.1f")
+                for key in ("Chênh lệch (%)", "Biên an toàn (%)", "Điểm / 100")
+            },
         },
     )
     st.download_button(

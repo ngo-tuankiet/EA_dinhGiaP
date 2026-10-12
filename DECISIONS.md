@@ -1646,3 +1646,15 @@ RI/DCF đầy đủ của Shinhan không so trực tiếp: kỳ đầu 6 tháng 
   (Wilder, alpha 1/n); kháng cự/hỗ trợ = mức gần nhất trên/dưới giá trong {MA20/50/200, đỉnh/đáy 60 phiên}.
 - 🔭 Sắp tới: KỊCH BẢN CÓ ĐIỀU KIỆN (vượt kháng cự / thủng hỗ trợ, RSI quá mua/quá bán, nghiêng theo
   nhãn tổng) — không dự báo giá, không khuyến nghị. Ngưỡng: `market_overview` (ma_trend, rsi_*, level_window).
+
+### D53 — Giao diện điện thoại + chạy trên VPS (2026-10-12)
+- Kiểm tra bằng workflow 9 agent (6 rà code theo màn hình, 1 trình duyệt 375px, 1 VPS, 1 tổng hợp) → 86 phát hiện.
+- CSS (`workspace.css`, chỉ trong media query → desktop không đổi): ≤768px nút mở sidebar thành "Chọn mã · Vĩ mô"
+  44px + header sidebar dính; ≤640px tab xuống dòng (2/5 tab từng nằm ngoài màn hình), header gọn (thông tin mã lên từ
+  y=313 về 159), cặp chỉ số vĩ mô giữ 2 cột trong sidebar; màn cảm ứng (`hover:none` + `pointer:coarse`) tắt kéo
+  Plotly để vuốt cuộn được trang (đổi lại chart tĩnh, không tooltip khi chạm). Bỏ selector chết `[data-testid="column"]`.
+- Python: legend 6 chart xuống dưới vùng vẽ (chart "Cấu trúc tài sản" từng chỉ còn 64px vùng vẽ ở 375px) — thay
+  đổi desktop duy nhất; thẻ khuyến nghị flex-wrap + `clamp()`; ghim cột Hạng/Mã/CTCK trong bảng; bỏ chữ "sidebar/👈".
+- `requirements.txt` ghim `streamlit==1.55.0`, `plotly==7.0.0` (CSS dựa vào data-testid nội bộ).
+- VPS: `docs/DEPLOY_VPS.md` — systemd nghe 127.0.0.1, Caddy HTTPS + basic_auth (app không có đăng nhập; link công
+  khai = ai cũng bấm được nút DeepSeek/quét dữ liệu), giải nén DB trước lần chạy đầu.

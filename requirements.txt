@@ -6,7 +6,7 @@ numpy
 openai
 openpyxl
 pandas
-plotly
+plotly==7.0.0
 pydantic
 pydantic-settings
 python-dotenv
@@ -16,7 +16,7 @@ reportlab
 gspread
 gspread-dataframe
 SQLAlchemy
-streamlit
+streamlit==1.55.0  # CSS điện thoại (workspace.css) dựa vào data-testid nội bộ của bản này
 tzdata
 uvicorn
 vnai>=2.5.7

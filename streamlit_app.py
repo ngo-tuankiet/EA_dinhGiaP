@@ -6,6 +6,7 @@ Streamlit App Entrypoint — Giao diện phân tích và định giá tự độ
 import os
 import sys
 import traceback
+from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -56,6 +57,14 @@ render_app_theme()
 # 1. Cấu hình DB engine cache để tránh cạn kiệt connection pool
 @st.cache_resource
 def get_db_engines():
+    # Máy mới/VPS: giải nén vn100_full.db.gz TRƯỚC khi create_all bên dưới tạo DB rỗng — DB rỗng làm
+    # ensure_portable_db tưởng đã có dữ liệu và không giải nén nữa (app chạy với kho trống).
+    portable_db = Path(__file__).resolve().parent / "vn100_full.db"
+    if not portable_db.exists() and portable_db.with_suffix(".db.gz").exists():
+        from scripts.ensure_portable_db import ensure_portable_db
+
+        ensure_portable_db()
+
     db_url_read = os.getenv("DATABASE_URL_READONLY") or "sqlite:///vn100_full.db"
     db_url_write = os.getenv("DATABASE_URL_WRITE") or "sqlite:///vn100_full.db"
 
@@ -146,7 +155,7 @@ try:
             )
             st.info(
                 f"**{freshness_headline}.** {freshness_details} "
-                "Dùng nút cập nhật trong sidebar khi cần.",
+                "Dùng nút cập nhật ở thanh bên (điện thoại: nút « Chọn mã · Vĩ mô ») khi cần.",
                 icon="⚠️",
             )
         st.session_state["auto_weekly_check_done"] = True
@@ -457,7 +466,7 @@ try:
             render_valuation_results(company, db_write)
     else:
         st.info(
-            "👈 Vui lòng chọn Ticker ở sidebar và nhấn **'Tải dữ liệu mặc định'** để bắt đầu phân tích định giá.",
+            "Chọn mã ở thanh bên (điện thoại: nút « Chọn mã · Vĩ mô » góc trên trái) rồi nhấn **'Nạp lại mô hình đã lưu'** để bắt đầu phân tích định giá.",
             icon="ℹ️",
         )
         from valuation.views.vn100_ranking import render_vn100_ranking
