@@ -107,6 +107,15 @@ def run_weekly_auto_update(
     if vni["prices"]["status"] != "UPDATED":
         logger.warning("Không cập nhật được VNINDEX: %s", vni["prices"])
 
+    # Sự kiện cổ tức/quyền trước đây chỉ làm mới khi mở từng mã → 85/100 mã đứng ở 30/08 và lịch
+    # quyền VN100 thiếu các đợt công bố mới. Theo TTL nên mã vừa kiểm tra không gọi lại nguồn.
+    if db_write is not None:
+        from valuation.ingest.corporate_actions import backfill_vn100_corporate_actions
+
+        ca = backfill_vn100_corporate_actions(db_write)
+        if ca.get("error"):
+            logger.warning("Cập nhật sự kiện cổ tức/quyền lỗi %s mã: %s", ca["error"], ca)
+
     consensus_summary = ", ".join(f"{k}={v}" for k, v in consensus_counts.items())
     summary_msg = (
         f"Hoàn tất cập nhật hàng tuần: {success_count}/{total} mã đầy đủ, "

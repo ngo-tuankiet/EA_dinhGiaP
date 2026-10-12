@@ -436,6 +436,20 @@ def _benefit_summary(row: Any) -> str:
     if row.event_type == "RIGHTS_ISSUE" and ratio is not None:
         text = f"Được mua {ratio * 100:g} cổ phiếu/100 cổ phiếu"
         return f"{text}, giá {_fmt_vnd(issue_price)} VND" if issue_price else text
+    # Phát hành không chia cho cổ đông hiện hữu: trước đây rơi xuống "Chưa đủ thông tin" dù có tỷ lệ.
+    dilutive = {
+        "ESOP": "Phát hành ESOP cho nhân viên",
+        "PRIVATE_PLACEMENT": "Phát hành riêng lẻ",
+        "SHARE_ISSUE": "Phát hành thêm",
+    }
+    if row.event_type in dilutive and ratio:
+        pct = f"{ratio * 100:.2f}".rstrip("0").rstrip(".")
+        text = f"{dilutive[row.event_type]} {pct}% số cổ phiếu (cổ đông hiện hữu không nhận)"
+        return f"{text}, giá {_fmt_vnd(issue_price)} VND" if issue_price else text
+    if row.event_type == "CASH_DIVIDEND":
+        return "Chưa công bố số tiền/cổ phiếu"
+    if not ratio:
+        return "Nguồn chưa ghi tỷ lệ"
     return "Chưa đủ thông tin"
 
 
