@@ -29,6 +29,8 @@ python3 -m venv .venv
 
 - `requirements.txt` ghim `streamlit==1.55.0`: CSS điện thoại dựa vào tên phần tử nội bộ của bản này. Nâng
   Streamlit thì phải kiểm tra lại giao diện điện thoại.
+- `kaleido` (Plotly xuất ảnh biểu đồ cho PDF/Word) cần Chrome. VPS thường chưa có → tải bản riêng cho kaleido:
+  `.venv/bin/kaleido_get_chrome` (một lần). Thiếu Chrome thì app vẫn chạy, chỉ PDF/Word không kèm biểu đồ.
 - `vnii` / `vnstock_data` là gói tài trợ vnstock. Nếu `pip install` báo không tìm thấy, cài theo hướng dẫn gói
   tài trợ của vnstock rồi chạy lại lệnh trên. App vẫn mở được với dữ liệu có sẵn; chỉ nút cập nhật dữ liệu cần gói này.
 

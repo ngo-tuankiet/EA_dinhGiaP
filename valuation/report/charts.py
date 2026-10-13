@@ -46,7 +46,7 @@ def generate_football_field_chart(
     
     # Đảm bảo thư mục tồn tại
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    fig.write_image(output_path, engine="kaleido")
+    fig.write_image(output_path)  # Plotly ≥6 bỏ tham số engine; kaleido tự dùng (D59)
 
 def generate_financial_history_chart(
     years: List[int],
@@ -93,7 +93,7 @@ def generate_financial_history_chart(
         margin=dict(l=60, r=60, t=80, b=40),
     )
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    fig.write_image(output_path, engine="kaleido")
+    fig.write_image(output_path)  # Plotly ≥6 bỏ tham số engine; kaleido tự dùng (D59)
 
 
 def generate_profitability_chart(
@@ -125,7 +125,7 @@ def generate_profitability_chart(
         margin=dict(l=60, r=40, t=80, b=40),
     )
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    fig.write_image(output_path, engine="kaleido")
+    fig.write_image(output_path)  # Plotly ≥6 bỏ tham số engine; kaleido tự dùng (D59)
 
 
 def generate_sensitivity_heatmap_chart(
@@ -157,4 +157,4 @@ def generate_sensitivity_heatmap_chart(
     )
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    fig.write_image(output_path, engine="kaleido")
+    fig.write_image(output_path)  # Plotly ≥6 bỏ tham số engine; kaleido tự dùng (D59)

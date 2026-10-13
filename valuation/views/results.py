@@ -147,6 +147,14 @@ def format_vnd(val: float) -> str:
         return formatted.replace(",", ".")
 
 
+@st.cache_resource(show_spinner=False)
+def _kaleido_server() -> None:
+    """Giữ Chrome của kaleido chạy sẵn cho cả tiến trình: 4 ảnh ~4 giây thay vì ~13 giây (D59)."""
+    import kaleido
+
+    kaleido.start_sync_server(silence_warnings=True)
+
+
 def render_valuation_results(company: Company | CompanyBank, db_write: Session):
     """
     Render kết quả định giá chi tiết, biểu đồ và lưu kịch bản, đối chiếu consensus, AI narrative.
@@ -854,17 +862,35 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
         # Gom dữ liệu định lượng 11 phần (builder thuần, tách GUI)
         report_sections = build_report_sections(company, blended_fv, db=db_write)
 
-        # Tạo các ảnh biểu đồ tạm để chuẩn bị nhúng
+        # Ảnh biểu đồ cho PDF/Word (D59). Xoá ảnh cũ trước: báo cáo nhúng mọi file có sẵn ở đường dẫn
+        # → tạo thất bại/không bật thì không được nhúng nhầm biểu đồ của lần trước (từng có ảnh từ tháng 7).
+        for _old in (
+            chart_football_path,
+            chart_heatmap_path,
+            chart_history_path,
+            chart_profit_path,
+        ):
+            if os.path.exists(_old):
+                os.remove(_old)
+        # Tạo 4 ảnh mất vài giây mỗi lần trang tải lại → chỉ khi người dùng bật.
+        with_charts = st.toggle(
+            "Kèm ảnh biểu đồ trong PDF/Word",
+            value=False,
+            key=f"report_charts_{company.ticker}",
+            help="Mất khoảng 4–5 giây mỗi lần trang tải lại; tắt để duyệt nhanh.",
+        )
         chart_export_errors: list[str] = []
-        try:
-            generate_football_field_chart(
-                blended_fv, company.current_price, int_fv, rel_fv, chart_football_path
-            )
-            generate_sensitivity_heatmap_chart(
-                matrix, x_labels, y_labels, is_bank, chart_heatmap_path
-            )
-        except _VIEW_HANDLED_EXCEPTIONS as e:
-            chart_export_errors.append(str(e))
+        if with_charts:
+            try:
+                _kaleido_server()
+                generate_football_field_chart(
+                    blended_fv, company.current_price, int_fv, rel_fv, chart_football_path
+                )
+                generate_sensitivity_heatmap_chart(
+                    matrix, x_labels, y_labels, is_bank, chart_heatmap_path
+                )
+            except _VIEW_HANDLED_EXCEPTIONS as e:
+                chart_export_errors.append(str(e))
 
         # Trích xuất bảng dự phóng chi tiết để đưa vào HTML & Word
         from valuation.engine.forecast import forecast_company_financials
@@ -945,30 +971,30 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
         # Biểu đồ tài chính lịch sử + dự phóng (phần 5 báo cáo)
         _projs = bank_projs if is_bank else non_bank_projs
         _cs = report_sections["historical"]["chart_series"]
-        try:
-            _f_rev_key = "total_operating_income" if is_bank else "revenue"
-            generate_financial_history_chart(
-                years=_cs["years"],
-                revenue=_cs["revenue"],
-                net_income=_cs["net_income"],
-                revenue_label=_cs["revenue_label"],
-                output_path=chart_history_path,
-                forecast_years=[p["year"] for p in _projs],
-                forecast_revenue=[p[_f_rev_key] for p in _projs],
-                forecast_net_income=[p["net_income"] for p in _projs],
-            )
-            generate_profitability_chart(
-                years=_cs["years"],
-                roe=_cs["roe"],
-                margin=_cs["margin"],
-                margin_label=_cs["margin_label"],
-                output_path=chart_profit_path,
-            )
-        except _VIEW_HANDLED_EXCEPTIONS as e:
-            chart_export_errors.append(str(e))
+        if with_charts:
+            try:
+                _f_rev_key = "total_operating_income" if is_bank else "revenue"
+                generate_financial_history_chart(
+                    years=_cs["years"],
+                    revenue=_cs["revenue"],
+                    net_income=_cs["net_income"],
+                    revenue_label=_cs["revenue_label"],
+                    output_path=chart_history_path,
+                    forecast_years=[p["year"] for p in _projs],
+                    forecast_revenue=[p[_f_rev_key] for p in _projs],
+                    forecast_net_income=[p["net_income"] for p in _projs],
+                )
+                generate_profitability_chart(
+                    years=_cs["years"],
+                    roe=_cs["roe"],
+                    margin=_cs["margin"],
+                    margin_label=_cs["margin_label"],
+                    output_path=chart_profit_path,
+                )
+            except _VIEW_HANDLED_EXCEPTIONS as e:
+                chart_export_errors.append(str(e))
         if chart_export_errors:
-            # Một dòng thay cho 2 hộp vàng mỗi lần mở mã (D58). Gốc thường gặp: chưa cài kaleido
-            # (Plotly cần để xuất ảnh tĩnh) → PDF/Word vẫn xuất, chỉ thiếu ảnh biểu đồ.
+            # Một dòng thay cho hộp cảnh báo (D58). Gốc thường gặp: thiếu kaleido hoặc Chrome.
             st.caption(
                 "Ảnh biểu đồ tĩnh cho PDF/Word chưa tạo được — báo cáo vẫn xuất nhưng không kèm "
                 f"biểu đồ. Chi tiết: {chart_export_errors[0][:120]}"

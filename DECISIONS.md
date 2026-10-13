@@ -1718,3 +1718,15 @@ RI/DCF đầy đủ của Shinhan không so trực tiếp: kỳ đầu 6 tháng 
   12 tháng, BCĐKT cân đối). Không xoá cảnh báo lỗi dữ liệu nào.
 - 2 cảnh báo `write_image` mỗi lần mở mã → 1 dòng chú thích. Gốc: chưa cài `kaleido` (Plotly xuất ảnh tĩnh)
   → PDF/Word không kèm ảnh biểu đồ; cài kaleido là dependency mới, chờ duyệt.
+
+### D59 — Kaleido cho ảnh biểu đồ PDF/Word (2026-10-13, người dùng yêu cầu cài)
+- Cài `kaleido==1.5.0` (ghim trong requirements.txt; cần Chrome — Mac có sẵn, VPS: `.venv/bin/kaleido_get_chrome`).
+- Lỗi gốc thứ hai: `charts.py` gọi `write_image(..., engine="kaleido")` — Plotly ≥6 đã bỏ tham số `engine`
+  → mọi ảnh lỗi TypeError dù có kaleido. Bỏ tham số; test `tests/test_report_charts.py`.
+- Hiệu năng: 4 ảnh mất ~13 giây (Chrome khởi động mỗi ảnh), mà tab Định giá dựng lại báo cáo MỖI lần tải
+  trang → thêm công tắc « Kèm ảnh biểu đồ trong PDF/Word » (mặc định tắt) + `kaleido.start_sync_server`
+  qua `st.cache_resource` (~4 giây khi bật).
+- Toàn vẹn: báo cáo nhúng bất kỳ file ảnh nào có sẵn ở đường dẫn (từng có ảnh HPG từ 03/07) → xoá ảnh cũ trước
+  mỗi lần dựng; ảnh lỗi/không bật thì báo cáo không có ảnh thay vì ảnh sai.
+- Phát hiện, chưa sửa: nút "Tải xuống báo cáo PDF" trả về trang giả 1 dòng (không có WeasyPrint/Playwright);
+  Word + HTML đầy đủ. Cần thêm dependency → chờ duyệt.
