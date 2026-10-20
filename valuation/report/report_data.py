@@ -369,6 +369,11 @@ def build_scenarios(company: Union[Company, CompanyBank]) -> Optional[Dict[str, 
         # growth/margin → 3 kịch bản trùng nhau: đánh dấu để báo cáo ghi chú.
         targets = {r["target"] for r in out}
         return {"rows": out, "applicable": len(targets) > 1}
+    except ValueError as exc:
+        # D67: VCSH năm 5 của kịch bản ≤ 0 → không định nghĩa được ROE kịch bản; báo ra báo cáo, không nuốt.
+        if str(exc).startswith("BANK_SCENARIO_ROE5_UNDEFINED"):
+            return {"rows": [], "applicable": False, "note": str(exc)}
+        return None
     except Exception:
         return None
 

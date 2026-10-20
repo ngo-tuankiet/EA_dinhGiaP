@@ -97,8 +97,10 @@ Chỉ cài trên host chủ dự án (cần `pip install -r requirements-integra
   và vĩ mô, rồi gửi 5 mã cơ hội định giá (cùng bộ lọc tab VN100), thay đổi so với báo cáo trước
   và khung vĩ mô. Không gọi DeepSeek. Thử không gửi: `python scripts/daily_report.py --dry-run --no-refresh`.
   Lịch sử lưu ở `.daily_report/history/`; ngưỡng ở `config/defaults.yaml → daily_report`.
-- **Bot** (`scripts/discord_bot.py`, launchd giữ chạy liên tục): gõ mã VN100 (vd `FPT`) để định giá,
-  `!baocao` để nhận báo cáo ngay. Mã chưa qua cổng kiểm chứng chỉ hiện lý do, không hiện FV.
+- **Bot / trợ lý** (`scripts/discord_bot.py`, launchd giữ chạy liên tục): chỉ phản hồi khi được **@bot**.
+  `@bot FPT` định giá 1 mã; `@bot !baocao` báo cáo ngay; câu tự do (`@bot so sánh MBB với TCB`,
+  `@bot top 10 ngân hàng`, `@bot tin về lãi suất`) → DeepSeek hiểu yêu cầu, Python lấy số, DeepSeek viết
+  lời kèm bảng số gốc. Giới hạn lượt/người/ngày ở `config/defaults.yaml → assistant`. Mã chưa qua cổng kiểm chứng chỉ hiện lý do, không hiện FV.
   Cần bật *MESSAGE CONTENT INTENT* trong Discord Developer Portal. Bot offline khi máy ngủ.
 - Bật/tắt: `launchctl bootstrap gui/$UID ~/Library/LaunchAgents/vn.antigravity-vn100.<discord-bot|daily-report>.plist`
   / `launchctl bootout gui/$UID/vn.antigravity-vn100.<…>`. Log ở `logs/discord_bot.log`, `logs/daily_report.log`.

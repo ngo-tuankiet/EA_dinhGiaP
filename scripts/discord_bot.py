@@ -1,8 +1,11 @@
-"""Bot Discord chiều Discord → Python: định giá 1 mã VN100 và lệnh !baocao.
+"""Bot Discord = trợ lý chứng khoán. CHỈ phản hồi khi được @bot trong DISCORD_CHANNEL_ID (.env).
 
-Chỉ nhận lệnh trong DISCORD_CHANNEL_ID (.env); mọi thành viên kênh dùng được, trừ khi đặt
-DISCORD_OWNER_ID để khóa về 1 người. Gọi thẳng engine định giá
-(không cần FastAPI). Chạy nền bằng launchd: ~/Library/LaunchAgents/vn.antigravity-vn100.discord-bot.plist
+  @bot !baocao        → báo cáo sáng (không gọi DeepSeek, không trừ lượt)
+  @bot FPT            → báo cáo định giá chi tiết 1 mã (1 lượt DeepSeek)
+  @bot <câu tự do>    → valuation/services/assistant.py: DeepSeek hiểu yêu cầu → Python lấy số → DeepSeek viết lời
+
+Mọi thành viên kênh dùng được (quota/ngày ở config assistant), trừ khi đặt DISCORD_OWNER_ID để
+khóa về 1 người. Gọi thẳng engine định giá (không cần FastAPI). Chạy nền bằng launchd: ~/Library/LaunchAgents/vn.antigravity-vn100.discord-bot.plist
 """
 import asyncio
 import datetime
@@ -22,6 +25,7 @@ from fastapi import HTTPException
 from valuation.config import settings
 from valuation.engine.flag_descriptions import describe_flags
 from valuation.output.ai_insight import call_deepseek_sync
+from valuation.services.assistant import fetch_report, vn100
 
 # Đảm bảo chứng chỉ SSL sử dụng Certifi bundle để tránh lỗi trên macOS
 os.environ["SSL_CERT_FILE"] = certifi.where()
@@ -32,7 +36,8 @@ logger = logging.getLogger(__name__)
 # Khởi tạo Discord client
 intents = discord.Intents.default()
 intents.message_content = True
-client = discord.Client(intents=intents)
+# Tắt @everyone/@here/@role trong mọi tin bot gửi: chữ do AI viết không thể ping cả server.
+client = discord.Client(intents=intents, allowed_mentions=discord.AllowedMentions.none())
 
 # Đọc token và cấu hình từ Settings
 DISCORD_TOKEN = settings.discord_bot_token or os.getenv("DISCORD_BOT_TOKEN")
@@ -56,28 +61,6 @@ def is_authorized(
         return False
     return owner_id is None or author_id == owner_id
 
-
-def load_universe() -> set[str]:
-    from valuation.db.models import Ticker
-    from valuation.db.session import SessionLocalRead
-
-    db = SessionLocalRead()
-    try:
-        return {t for (t,) in db.query(Ticker.ticker).filter(Ticker.is_vn100)}
-    finally:
-        db.close()
-
-
-def fetch_report(ticker: str) -> dict:
-    """Cùng engine thống nhất với Streamlit/batch, gọi trực tiếp thay vì qua FastAPI."""
-    from valuation.api.routes.valuation import unified_report
-    from valuation.db.session import SessionLocalRead
-
-    db = SessionLocalRead()
-    try:
-        return unified_report(ticker, db)
-    finally:
-        db.close()
 
 _FLAG_ICON = {"error": "❌", "warning": "⚠️", "info": "ℹ️"}
 
@@ -162,60 +145,6 @@ async def on_ready():
     logger.info(f"Bot đã đăng nhập thành công dưới tên: {client.user}")
 
 
-def parse_ticker_from_message(content: str, bot_id: int) -> str | None:
-    """Phân tích tin nhắn để trích xuất mã cổ phiếu bằng nhiều cú pháp khác nhau"""
-    content_strip = content.strip()
-    if not content_strip:
-        return None
-
-    # 1. Hỗ trợ tiền tố truyền thống !revalue <ticker>
-    if content_strip.startswith("!revalue"):
-        parts = content_strip.split()
-        if len(parts) >= 2:
-            return parts[1].upper().strip()
-
-    # Danh sách các từ cần bỏ qua để tránh nhận diện nhầm khi chat
-    ignored_words = {
-        "cho", "toi", "con", "mua", "ban", "giu", "xem", "chay", "lenh", 
-        "bot", "vua", "vao", "may", "chu", "dinh", "gia", "check", "ma", 
-        "code", "link", "them", "xoa", "sua", "gium", "giup", "dep"
-    }
-
-    # 2. Hỗ trợ mention bot (ví dụ: @dinh gia chung khoan chạy fpt, @bot VCB...)
-    mention_pattern = f"<@!?{bot_id}>"
-    if re.search(mention_pattern, content_strip):
-        clean = re.sub(mention_pattern, "", content_strip).lower().strip()
-        # Tìm các từ có 3-4 chữ cái
-        candidates = re.findall(r"\b[a-zA-Z]{3,4}\b", clean)
-        for cand in candidates:
-            if cand not in ignored_words:
-                return cand.upper()
-
-    # 3. Hỗ trợ từ khóa tiếng Việt/tiếng Anh (ví dụ: "định giá fpt", "dinh gia vcb", "check ctg")
-    content_lower = content_strip.lower()
-    keywords = ["định giá", "dinh gia", "revalue", "check", "định giá mã", "dinh gia ma"]
-    for kw in keywords:
-        if kw in content_lower:
-            # Ưu tiên tìm từ đứng ngay sau từ khóa
-            match = re.search(rf"{kw}\s+(\b[a-zA-Z]{3,4}\b)", content_lower)
-            if match:
-                return match.group(1).upper()
-            
-            # Nếu không tìm thấy ngay sau, quét toàn bộ tin nhắn loại trừ các từ bỏ qua
-            candidates = re.findall(r"\b[a-zA-Z]{3,4}\b", content_lower)
-            for cand in candidates:
-                if cand not in ignored_words:
-                    return cand.upper()
-
-    # 4. Hỗ trợ gõ trực tiếp mã cổ phiếu (ví dụ: gõ "FPT" hoặc "fpt" hoặc "VCB" trong kênh)
-    # Chỉ áp dụng nếu tin nhắn chỉ chứa duy nhất 1 từ dài từ 3 đến 4 chữ cái và không nằm trong từ bỏ qua
-    if re.match(r"^[a-zA-Z]{3,4}$", content_strip):
-        cand = content_strip.lower()
-        if cand not in ignored_words:
-            return cand.upper()
-
-    return None
-
 def _flags_block(flag_infos: list) -> str:
     if not flag_infos:
         return "✅ Không có cảnh báo — dữ liệu đạt chuẩn kiểm tra."
@@ -244,6 +173,51 @@ async def handle_report_command(message):
         await temp_msg.delete()
 
 
+HELP = (
+    "Gọi mình bằng **@bot** + yêu cầu, ví dụ:\n"
+    "• `@bot FPT` — định giá chi tiết 1 mã\n"
+    "• `@bot so sánh MBB với TCB` · `@bot top 10 ngân hàng upside cao`\n"
+    "• `@bot HPG 20 phiên qua tăng bao nhiêu` · `@bot mã nào giảm mạnh nhất tuần này`\n"
+    "• `@bot lãi suất Fed, CPI hiện tại` · `@bot CTCK khuyến nghị gì cho VNM`\n"
+    "• `@bot tin tức về lãi suất` · `@bot !baocao`"
+)
+
+
+async def take_quota(message) -> tuple[bool, int | None]:
+    """Trừ 1 lượt trước khi gọi DeepSeek; hết lượt thì báo và dừng."""
+    from valuation.services.assistant import _cfg, _today
+    from valuation.services.assistant import take_quota as _take
+
+    ok, remaining = await asyncio.to_thread(_take, message.author.id, _cfg(), _today())
+    if not ok:
+        await message.channel.send("⛔ Bạn đã dùng hết lượt hỏi hôm nay. Mai quay lại nhé.")
+    return ok, remaining
+
+
+async def handle_ask(message, text: str, remaining: int | None):
+    """Câu hỏi tự do → trợ lý (tối đa 2 lượt DeepSeek), kèm bảng số gốc Python để đối chiếu."""
+    from valuation.services.assistant import ask
+
+    temp_msg = await message.channel.send("⏳ Đang hiểu yêu cầu và lấy dữ liệu...")
+    try:
+        res = await asyncio.to_thread(ask, text)
+    except Exception as e:  # noqa: BLE001 — báo lỗi ngay trong kênh thay vì chết im lặng
+        logger.error(f"Assistant error: {e}")
+        await message.channel.send(f"❌ Không xử lý được yêu cầu: {type(e).__name__}: {e}")
+        return
+    finally:
+        await temp_msg.delete()
+    quota = "Không giới hạn lượt" if remaining is None else f"Còn {remaining} lượt hôm nay"
+    answer = discord.Embed(title="🤖 Trợ lý chứng khoán", description=res["answer"][:4000], color=0x5865F2)
+    if res["notes"]:
+        answer.add_field(name="Ghi chú", value="; ".join(res["notes"])[:1024])
+    answer.set_footer(text=f"{quota} · Không phải khuyến nghị đầu tư | {_footer()}")
+    await message.channel.send(embed=answer)
+    if res["sources"]:  # tin riêng: tổng 2 embed có thể vượt 6000 ký tự/tin
+        await message.channel.send(embed=discord.Embed(
+            title="📎 Số liệu gốc (Python lấy từ DB, không qua AI)", description=res["sources"], color=0x95A5A6))
+
+
 @client.event
 async def on_message(message):
     # Tránh trường hợp bot tự trả lời chính mình
@@ -252,13 +226,23 @@ async def on_message(message):
     if not is_authorized(message.author.id, message.author.bot, message.channel.id, OWNER_ID, CHANNEL_ID):
         return
 
-    if message.content.strip().startswith("!baocao"):
+    if client.user not in message.mentions:
+        return  # chỉ phản hồi khi được @bot — không đọc chat thường trong kênh
+
+    text = re.sub(r"<@[!&]?\d+>", "", message.content).strip()
+    if text.startswith("!baocao"):
         await handle_report_command(message)
         return
+    if not text:
+        await message.channel.send(HELP)
+        return
 
-    # Phân tích xem tin nhắn có chứa mã cổ phiếu không; chỉ nhận mã thuộc VN100 (chống spam/injection)
-    ticker = parse_ticker_from_message(message.content, client.user.id)
-    if ticker not in VN100:
+    ok, remaining = await take_quota(message)
+    if not ok:
+        return
+    ticker = text.upper()
+    if ticker not in VN100:  # không phải đúng 1 mã → trợ lý hiểu câu tự do
+        await handle_ask(message, text, remaining)
         return
 
     temp_msg = await message.channel.send(f"⏳ Đang thực hiện định giá và phân tích AI cho cổ phiếu **{ticker}**...")
@@ -351,6 +335,6 @@ if __name__ == "__main__":
     if CHANNEL_ID is None:
         logger.error("Cần DISCORD_CHANNEL_ID (dạng số) trong .env — bot chỉ nhận lệnh trong 1 kênh.")
         sys.exit(1)
-    VN100.update(load_universe())
+    VN100.update(vn100())
     logger.info(f"Đã nạp {len(VN100)} mã VN100; kênh {CHANNEL_ID}; người dùng: {OWNER_ID or 'mọi thành viên'}")
     client.run(DISCORD_TOKEN, log_handler=None)

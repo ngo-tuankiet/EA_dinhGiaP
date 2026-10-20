@@ -1749,12 +1749,10 @@ def build_company_data(
         # ROE bền vững = ROE năm 5 của chính dự phóng chuẩn hóa (không phải trung vị
         # lịch sử: cửa sổ ngắn bị một quý trích lập đột biến kéo sập, cửa sổ dài giữ
         # lại ROE cao đã phai). Trung vị lịch sử chỉ để đối chiếu.
-        from valuation.engine.forecast_bank import forecast_bank_financials
+        from valuation.engine.forecast_bank import driver_roe5
 
-        _proj = forecast_bank_financials(company_bank, fade_to_terminal=False)  # driver thuần, trước hội tụ
-        _eq_avg = (_proj[-2]["total_equity"] + _proj[-1]["total_equity"]) / 2
-        if _eq_avg > 0:
-            roe5 = _proj[-1]["net_income"] / _eq_avg
+        roe5 = driver_roe5(company_bank)  # driver thuần, trước hội tụ (cùng hàm kịch bản D67 dùng)
+        if roe5 is not None:
             if abs(roe5 - avg_roe) > float(_bank_cfg.get("roe_history_tolerance", 0.05)):
                 data_flags.append("BANK_ROE_FORECAST_VS_HISTORY")
             company_bank.assumptions.sustainable_roe = roe5

@@ -72,12 +72,14 @@ def test_lambda_zero_reproduces_own_roe_with_cap():
     assert any(w.startswith("BANK_TERMINAL_ROE_CAPPED") for w in c.warnings)
 
 
-def test_bear_scenario_still_moves_terminal_when_fully_converged():
+def test_bear_at_full_convergence_keeps_industry_roe_moves_value_via_coe_g():
     base = _bank(0.1697, 1.0)
     bear = apply_scenario_adjustments(base, "Bear")
-    # λ = 1: sốc −2pp chỉ trên ROE riêng sẽ mất tác dụng → phải sốc cả ROE ngành.
-    assert bear.assumptions.industry_roe == pytest.approx(0.1497)
-    assert BankGeneralValuationModel(bear).terminal_roe == pytest.approx(0.1497)
+    # D67 (phi chọn phương án b, 21/10/2026): ROE ngành KHÔNG sốc → λ = 1 thì ROE_T kịch bản = ROE ngành
+    # (đúng định nghĩa hội tụ đầy đủ); Bear vẫn hạ giá trị qua COE +1 điểm %, g −0,5 điểm % và năm 1–5.
+    # Trước D67: sốc ROE ngành −2 điểm % cố định (0,1497).
+    assert bear.assumptions.industry_roe == pytest.approx(0.1697)
+    assert BankGeneralValuationModel(bear).terminal_roe == pytest.approx(0.1697)
     assert (
         BankGeneralValuationModel(bear).calculate_pb_valuation()["fair_value_per_share"]
         < BankGeneralValuationModel(base).calculate_pb_valuation()[

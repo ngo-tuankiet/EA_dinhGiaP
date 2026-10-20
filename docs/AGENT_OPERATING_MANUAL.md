@@ -116,6 +116,9 @@ AI vì phần đó đã có tab dữ liệu chi tiết riêng.
 - `scripts/discord_bot.py` gọi thẳng `unified_report` (không cần FastAPI), chỉ nhận lệnh của
   mọi thành viên trong `DISCORD_CHANNEL_ID` (hoặc chỉ `DISCORD_OWNER_ID` nếu đặt), chỉ mã `is_vn100`; mã có
   `publication_allowed=False` không hiện FV và không gọi DeepSeek.
+- Bot chỉ xử lý tin có @bot. Câu tự do đi qua `valuation/services/assistant.py`: DeepSeek chỉ chọn
+  công cụ trong `TOOLS` (đọc DB/RSS), `validate()` kiểm tra lại tham số, lượt 2 viết lời từ dữ liệu.
+  Thêm công cụ mới = thêm hàm chỉ đọc vào `TOOLS` + nhánh kiểm tra trong `validate()` + test.
 - Lịch chạy bằng launchd `vn.antigravity-vn100.discord-bot` / `.daily-report` (chỉ host chủ).
 
 ## 9. Khi sửa UI
@@ -207,12 +210,18 @@ AI vì phần đó đã có tab dữ liệu chi tiết riêng.
   5,0. NH: dòng cân phai ROE tính từ driver GỐC (`AssumptionsBank.driver_base`, repo chụp lúc dựng; UI chụp nếu
   thiếu); driver analyst/kịch bản sửa cộng thẳng: LN = LN_phai(gốc) + (LN_driver_sửa − LN_driver_gốc) trên cùng
   trạng thái đầu kỳ — đúng dấu, không bỏ dòng cân (trước: bỏ dòng cân → FV giảm khi tăng NIM ở NH dòng cân dương).
-  Hệ quả: kịch bản Bull/Bear NH (`sensitivity`) nay có tác dụng ở năm 3–5. fin_a: ràng buộc vốn
+  Hệ quả: kịch bản Bull/Bear NH (`sensitivity`) nay có tác dụng ở năm 3–5 (D67 thay cách áp, xem dưới). fin_a: ràng buộc vốn
   (`min_equity_to_assets`) áp RIÊNG cho đường gốc và đường sửa theo cùng luật một bước (trước: đường gốc chỉ bị kẹp
   khi đường sửa chạm trần → LN nhảy bậc khi kéo tăng trưởng tín dụng qua trần); không sửa driver thì trùng từng số
   (19 TCTD), Bull/Bear đổi ≤ 0,4%. Thuế dài hạn một nguồn
   `wacc.marginal_tax_rate(terminal_tax_rate, tax_rate)`: thuế người dùng nhập, không thì thuế biên (mode
   `marginal`) hoặc thuế hiệu dụng (mode `effective`) — dùng cho NOPAT terminal (dcf) và lá chắn thuế nợ (WACC).
+- D67 (21/10/2026, phi chọn phương án b): kịch bản Bull/Bear NH tính lại ROE dài hạn từ driver đã sốc. roe5 kịch
+  bản = ROE riêng Base + (`forecast_bank.driver_roe5` sau sốc − trước sốc). ROE_T kịch bản hội tụ λ về ROE ngành, và
+  ROE ngành KHÔNG sốc. `driver_base` sốc cùng hệ số nên năm 3–5 phai về ROE_T kịch bản: năm 5 = ROE_T, LN6 nối liền,
+  đúng cho máy đặt và mọi kịch bản. Chỉ khi analyst sửa driver thì năm 5 mới lệch ROE_T, đúng bằng phần delta.
+  Bỏ `sustainable_roe_delta`. ROE riêng ≤ 0 vẫn dùng, không còn thay bằng ROE TTM. Cờ `BANK_TERMINAL_JUMP`
+  (cảnh báo) bắn khi |LN6/LN5 − (1 + g)| > `bank_terminal.terminal_jump_flag_tolerance` hoặc LN5 ≤ 0.
 
 ## 13. SOTP_HOLDINGS và cổng công bố (fx3, 20/10/2026)
 
@@ -268,7 +277,7 @@ Mô tả đầy đủ ở `valuation/engine/flag_descriptions.py`; level dưới
 - **Cảnh báo (không chặn):** `SOURCE_AUDIT_PARTIAL`, `SOURCE_CONFLICT_IMMATERIAL`, `FILING_PRECEDENCE`,
   `FILING_BS_INCOMPLETE`, `UNEXPLAINED_CURRENT_ASSETS`, `CIP_LINE_MISSING`, `MULTIPLE_FROM_PEER_MEDIAN`,
   `SEC_/INS_PAYOUT_FALLBACK`, `SEC_/INS_PAYOUT_INCONSISTENT`, `INS_NO_MARKET_PB_HISTORY`, `TAX_FALLBACK_EBIT`,
-  `BANK_ROE_FADE_PLUG`, `MINORITY_AT_BOOK_MATERIAL`, `RNAV_PROJECT_INPUT_MISSING`, `SOTP_SEGMENT_INPUT_MISSING`,
+  `BANK_ROE_FADE_PLUG`, `BANK_TERMINAL_JUMP` (D67), `MINORITY_AT_BOOK_MATERIAL`, `RNAV_PROJECT_INPUT_MISSING`, `SOTP_SEGMENT_INPUT_MISSING`,
   `SOTP_HOLDINGS_INCOMPLETE` (quay về proxy nên `VALUATION_PROXY` vẫn chặn).
 - **Thông tin:** `INCONSISTENT_YEAR_DROPPED`, `MULTIPLE_PRE_ISSUE_EXCLUDED`, `MULTIPLE_PRE_ISSUE_PROFORMA`,
   `PE_LEG_TTM`, `SOTP_HOLDINGS_MODE`, `SOTP_UNLISTED_AT_BOOK`, `RIGHTS_ISSUE_UNDATED` (tách khỏi
@@ -276,7 +285,7 @@ Mô tả đầy đủ ở `valuation/engine/flag_descriptions.py`; level dưới
 - **Lỗi cấu hình (raise, không phải cờ):** `PE_LEG_CYCLICAL_UNSUPPORTED` (mã chu kỳ + P/E phụ), stake/holder
   sai trong `sotp_holdings.yaml`, `reviewed_by` thiếu `as_of`, khóa lạ của `dcf.wacc_tax_mode`.
 - Ngưỡng do claude đề xuất, CHƯA được người dùng duyệt (đổi số không cần sửa code): `bank_terminal.
-  fade_plug_flag_share` 0,10, `audit.max_unaudited_periods` 2, `audit.filing_precedence_max_rel_diff` 0,05 +
+  fade_plug_flag_share` 0,10, `bank_terminal.terminal_jump_flag_tolerance` 0,10 (D67), `audit.max_unaudited_periods` 2, `audit.filing_precedence_max_rel_diff` 0,05 +
   `audit.filing_source_domains`, `dcf.minority_book_review` 0,10, `relative_multiples.capital_raise_min_ratio`
   0,05 / `capital_raise_proceeds_tol` 0,10 / `capital_raise_exclusion_groups`, `publication_gate.
   new_listing_hold_*`.

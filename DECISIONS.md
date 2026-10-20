@@ -1872,3 +1872,25 @@ RI/DCF đầy đủ của Shinhan không so trực tiếp: kỳ đầu 6 tháng 
   cho 5 holder SOTP và stake MSR sau Elmet (0,8787 cùng mẫu số DB); các mục registry owner "claude-de-xuat" (vd
   MBB, REE, PC1, VCG, FRT, SSI, HCM); các ngưỡng đề xuất liệt kê ở manual §14; EIB/OCB/EVF registry data_blocked
   mà engine vẫn công bố.
+
+### D67 — Kịch bản NH: ROE dài hạn theo kịch bản (2026-10-21, người dùng chọn — owner phi)
+- **Vấn đề (phản biện r4, major):** Bull/Bear sốc driver cả 5 năm. Cơ chế delta r4a dồn toàn bộ phần sốc vào LN năm 5,
+  trong khi RI terminal vẫn theo ROE_T của Base (chỉ ±2 điểm % cố định) → LN năm 5 → 6 nhảy bậc. Vd VPB Bear lỗ năm
+  4–5 rồi ROE ~12% vĩnh viễn; CTG Bear LN6/LN5 = 4,61. Docstring "năm 5 = ROE_T, LN6 nối liền" sai ở kịch bản.
+- **Chọn phương án (b):** roe5 kịch bản = ROE riêng Base + (roe5 driver đã sốc − roe5 driver Base), qua
+  `forecast_bank.driver_roe5`, dùng chung với repo. Với giả định máy đặt, ROE riêng Base chính là roe5 driver nên
+  roe5 kịch bản đúng bằng ROE năm 5 của driver đã sốc. Khi analyst nhập ROE bền vững thì giữ mức đó, chỉ dịch phần
+  sốc. ROE_T kịch bản hội tụ λ (D64) về ROE ngành. `driver_base` sốc cùng hệ số nên năm 3–5 phai về ROE_T kịch bản,
+  năm 5 = ROE_T. Bỏ `sustainable_roe_delta` ±2 điểm % trong `config/scenarios.yaml`.
+- **ROE ngành KHÔNG sốc.** Đây là dữ liệu quan sát (trung vị ROE lịch sử của nhóm), làm đích dài hạn cho hội tụ
+  Damodaran, không phải driver của NH. Muốn sốc thì phải dùng số cố định (đúng thứ (b) thay thế) hoặc dự phóng lại cả
+  nhóm. Hệ quả: λ = 1 thì ROE_T kịch bản = ROE ngành. Kịch bản khi đó chỉ còn tác động qua năm 1–5, COE và g (đảo ca
+  s3 "λ = 1 sốc cả đích"). Nếu đọc Bear là stress toàn hệ thống thì vẫn có lý do sốc ROE ngành: mở cho phi.
+- **ROE riêng ≤ 0 vẫn dùng** (`bank_own_roe`). Trước đây giá trị này bị thay bằng ROE TTM, nên VPB Bear (roe5 −4,5%)
+  sẽ ra ROE_T cao hơn Base. Base 19 TCTD đều > 0 nên không đổi.
+- **Cờ mới `BANK_TERMINAL_JUMP` (cảnh báo):** bắn khi |LN6/LN5 − (1 + g)| > `bank_terminal.terminal_jump_flag_tolerance`
+  hoặc khi LN5 ≤ 0. Ngưỡng 0,10 do claude đề xuất, chờ phi duyệt. Base 19 TCTD lệch +0,03…+0,07.
+- **Đo (DB 20/10, chỉ đọc):** Base trùng từng số ở cả 19 mã. Sau sửa, mọi kịch bản lệch tối đa 0,074 (HDB Bull);
+  trước sửa là 7,07 (VPB Bear). Không mã nào bắn cờ. FV Bull −1,3%…−10,5% (bỏ +2 điểm % ROE ngành). FV Bear −21,0%
+  (EVF) / −15,8% (VPB)…+9,0% (NAB). Giá trị kỳ vọng 25/50/25 −0,6%…−4,8%. Ghi chú:
+  /private/tmp/claude-501/upgrade_notes/d67.md.

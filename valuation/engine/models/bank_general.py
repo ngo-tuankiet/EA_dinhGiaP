@@ -93,6 +93,21 @@ class BankGeneralValuationModel:
         # tức payout* = 1 - g/ROE. Nếu payout dùng trong giai đoạn dự phóng lệch
         # quá xa payout* thì hai khối đang mô tả hai thế giới khác nhau.
         self._check_terminal_consistency()
+        self._check_terminal_jump()
+
+    def _check_terminal_jump(self) -> None:
+        """D67: LN6 của RI terminal (ROE_T đầu kỳ × VCSH5) phải nối liền LN5 dự phóng: |LN6/LN5 − (1 + g)| quá ngưỡng
+        (hoặc LN5 ≤ 0) → cờ cảnh báo BANK_TERMINAL_JUMP. Bắt tái phát lỗi phản biện r4 (kịch bản dồn sốc vào năm 5)
+        và ca analyst sửa driver năm 4–5 làm năm 5 lệch xa ROE_T."""
+        tol = float(load_defaults()["bank_terminal"]["terminal_jump_flag_tolerance"])
+        ni5 = self.projections[-1]["net_income"]
+        ni6 = self.terminal_roe_begin * self.projections[-1]["total_equity"]
+        if ni5 <= 0:
+            self.company.warnings.append(
+                f"BANK_TERMINAL_JUMP: LN năm 5 = {ni5:,.0f} tỷ ≤ 0 trong khi RI terminal giả định LN6 = {ni6:,.0f} tỷ")
+        elif abs(ni6 / ni5 - (1 + self.g)) > tol:
+            self.company.warnings.append(
+                f"BANK_TERMINAL_JUMP: LN6/LN5 = {ni6 / ni5:.2f} lệch 1 + g = {1 + self.g:.3f} quá {tol:.0%}")
 
     def _check_terminal_consistency(self) -> None:
         """Cảnh báo khi trạng thái dừng KHÔNG THỂ TỒN TẠI về mặt toán học.

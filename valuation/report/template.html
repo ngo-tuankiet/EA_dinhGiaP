@@ -361,6 +361,8 @@
             {% endfor %}
         </tbody>
     </table>
+    {% elif scenarios and scenarios.note %}
+    <p style="font-size:12.5px; color:#64748B;">Không dựng được bảng kịch bản: {{ scenarios.note }}</p>
     {% elif scenarios %}
     <p style="font-size:12.5px; color:#64748B;">Phương pháp định giá hiện tại (proxy từ giá trị sổ sách) không co giãn theo giả định tăng trưởng/biên — bảng kịch bản Bull/Bear không áp dụng.</p>
     {% endif %}

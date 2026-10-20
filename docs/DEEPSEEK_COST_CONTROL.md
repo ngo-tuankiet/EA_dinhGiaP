@@ -25,6 +25,15 @@
   không gọi lại chỉ vì người dùng mở tab. Một request nếu cần phải gom cả nhóm
   thận trọng và tăng trưởng.
 
+## Trợ lý Discord (@bot)
+
+- Bot chỉ đọc tin có **@bot** trong `DISCORD_CHANNEL_ID`; chat thường không tốn lượt nào.
+- `@bot !baocao`: không gọi DeepSeek. `@bot <MÃ>`: 1 lượt (nhận định định giá; mã bị chặn → 0 lượt).
+- Câu tự do: tối đa **2 lượt** — lượt 1 (JSON, ≤`plan_max_tokens`) chỉ chọn công cụ; lượt 2 viết lời
+  từ dữ liệu Python, dữ liệu cắt ở `data_chars`. Yêu cầu ngoài phạm vi chỉ tốn lượt 1.
+- Quota `assistant.daily_limit_per_user` lượt/người/ngày (`.assistant/quota.json`), trừ trước khi gọi.
+- DeepSeek không tự trả số; công cụ chỉ đọc DB/RSS allowlist (`valuation/services/assistant.py`).
+
 ## Nội dung không nên để AI lặp lại
 
 - Không tạo section AI summary riêng tên "Cổ tức, tăng vốn và quyền cổ đông".

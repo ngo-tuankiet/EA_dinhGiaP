@@ -100,6 +100,15 @@ FLAG_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
             "hoặc rà ROE ngành/λ (bank_terminal.fade_plug_flag_share)."
         ),
     },
+    "BANK_TERMINAL_JUMP": {
+        "level": "warning",
+        "message": (
+            "LN năm 6 mà RI terminal giả định (ROE terminal × VCSH năm 5) không nối liền LN năm 5 của dự phóng: "
+            "|LN6/LN5 − (1 + g)| vượt bank_terminal.terminal_jump_flag_tolerance, hoặc LN năm 5 ≤ 0. Thường do driver "
+            "năm 4–5 bị sửa xa giả định máy đặt — giá trị terminal không còn khớp quỹ đạo dự phóng; rà driver hoặc "
+            "ROE bền vững."
+        ),
+    },
     "MINORITY_AT_BOOK_MATERIAL": {
         "level": "warning",
         "message": (

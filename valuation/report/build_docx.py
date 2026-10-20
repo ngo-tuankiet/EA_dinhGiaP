@@ -331,6 +331,8 @@ def build_docx_report(
                 ],
                 "Kịch bản",
             )
+        elif scenarios and scenarios.get("note"):
+            doc.add_paragraph(f"Không dựng được bảng kịch bản: {scenarios['note']}")
         elif scenarios:
             doc.add_paragraph(
                 "Phương pháp định giá hiện tại (proxy từ giá trị sổ sách) không co giãn "

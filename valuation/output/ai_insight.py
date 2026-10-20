@@ -5,7 +5,9 @@ background task đồng bộ (FastAPI BackgroundTasks) lẫn từ code async (Di
 bot, qua asyncio.to_thread) mà không cần quản lý 2 event loop khác nhau.
 """
 import logging
+
 import httpx
+
 from valuation.config import settings
 
 logger = logging.getLogger(__name__)
@@ -48,4 +50,4 @@ def call_deepseek_sync(
             return f"⚠️ Lỗi khi gọi DeepSeek API (Mã lỗi: {response.status_code})."
     except Exception as e:
         logger.error(f"DeepSeek exception: {e}")
-        return f"⚠️ Lỗi kết nối tới DeepSeek: {str(e)}"
+        return f"⚠️ Lỗi kết nối tới DeepSeek: {e!s}"

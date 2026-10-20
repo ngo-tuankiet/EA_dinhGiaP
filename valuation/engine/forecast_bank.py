@@ -28,17 +28,34 @@ def begin_roe_from_avg(roe_avg: float, g: float) -> float:
     return roe_avg * (1 + g / 2)
 
 
+def bank_own_roe(company: CompanyBank) -> float:
+    """ROE riêng trước hội tụ: sustainable_roe (roe5 repo / analyst nhập / kịch bản D67); thiếu → ROE TTM.
+    D67: giá trị ≤ 0 vẫn dùng — kịch bản Bear có thể lỗ năm 5; trước đây ≤ 0 bị thay bằng ROE TTM (đảo dấu sốc)."""
+    sustainable = company.assumptions.sustainable_roe
+    if sustainable is not None:
+        return sustainable
+    base_is, base_bs = company.historical_is[-1], company.historical_bs[-1]
+    cap = float((load_defaults().get("bank_terminal", {}) or {}).get("terminal_roe_cap", 0.20))
+    return base_is.net_income / base_bs.total_equity if base_bs.total_equity > 0 else cap
+
+
 def bank_terminal_roe(company: CompanyBank) -> tuple[float, float]:
     """(ROE terminal sau sàn/trần, trước sàn/trần) trên VCSH BÌNH QUÂN (bank_terminal): hội tụ ROE bền vững
     (roe5) về ROE ngành theo λ. Nguồn duy nhất cho dự phóng (fade năm cuối) và BankGeneralValuationModel."""
     cfg = load_defaults().get("bank_terminal", {}) or {}
     cap = float(cfg.get("terminal_roe_cap", 0.20))
     floor = float(cfg.get("terminal_roe_floor", 0.0))
-    a, base_is, base_bs = company.assumptions, company.historical_is[-1], company.historical_bs[-1]
-    roe_ttm = base_is.net_income / base_bs.total_equity if base_bs.total_equity > 0 else cap
-    sustainable = getattr(a, "sustainable_roe", None)
-    raw = converged_roe(sustainable if (sustainable and sustainable > 0) else roe_ttm, a.industry_roe, a.roe_convergence)
+    a = company.assumptions
+    raw = converged_roe(bank_own_roe(company), a.industry_roe, a.roe_convergence)
     return min(max(raw, floor), cap), raw
+
+
+def driver_roe5(company: CompanyBank) -> float | None:
+    """ROE năm 5 trên VCSH bình quân của dự phóng driver thuần (fade_to_terminal=False, không dòng cân): roe5 bền
+    vững của repo và phần dịch roe5 của kịch bản (D67). VCSH bình quân năm 5 ≤ 0 → None (ROE vô nghĩa)."""
+    p = forecast_bank_financials(company, fade_to_terminal=False)
+    eq_avg = (p[-2]["total_equity"] + p[-1]["total_equity"]) / 2
+    return p[-1]["net_income"] / eq_avg if eq_avg > 0 else None
 
 
 def fade_plug_share(projections: list[dict[str, Any]], tax_rate: float) -> float | None:
@@ -54,10 +71,13 @@ def forecast_bank_financials(company: CompanyBank, fade_to_terminal: bool = True
     Dự phóng 5 năm tiếp theo cho Ngân hàng dựa trên các giả định NIM, Tăng trưởng tín dụng, CIR, Credit Cost.
 
     Mô hình 3 giai đoạn (Damodaran): `bank_terminal.roe_transition_years` năm cuối, ROE trên VCSH bình quân phai
-    tuyến tính từ ROE driver về ROE terminal (trọng số 1/N … 1) để năm 5 = ROE_T và LN năm 6 nối liền năm 5.
-    fade_to_terminal=False: chỉ driver (repo dùng để đo roe5 = ROE bền vững trước hội tụ).
-    Driver analyst/kịch bản sửa so với ảnh chụp máy đặt (assumptions.driver_base) KHÔNG bỏ dòng cân (r4a, phản
-    biện r3: bỏ dòng cân trong khi RI terminal vẫn theo ROE_T làm đảo dấu tác động): trên cùng trạng thái đầu kỳ,
+    tuyến tính từ ROE của driver GỐC về ROE terminal (trọng số 1/N … 1). Năm 5 = ROE_T và LN năm 6 (RI terminal)
+    nối liền năm 5 khi driver = driver gốc: giả định máy đặt và MỌI kịch bản Bull/Bear (D67: kịch bản sốc cả
+    driver gốc và tính lại roe5 → ROE_T của chính kịch bản). Chỉ khi analyst sửa driver thì năm 5 lệch ROE_T đúng
+    bằng phần delta dưới đây; lệch quá ngưỡng → cờ BANK_TERMINAL_JUMP (bank_general).
+    fade_to_terminal=False: chỉ driver (driver_roe5 đo roe5 = ROE bền vững trước hội tụ).
+    Driver analyst sửa so với ảnh chụp máy đặt (assumptions.driver_base) KHÔNG bỏ dòng cân (r4a, phản biện r3:
+    bỏ dòng cân trong khi RI terminal vẫn theo ROE_T làm đảo dấu tác động): trên cùng trạng thái đầu kỳ,
     LN = LN_phai(driver gốc) + (LN_driver_sửa − LN_driver_gốc); dòng cân tính từ driver gốc. Không có ảnh chụp
     → driver hiện tại là gốc (giống hệt phai thuần).
     Ràng buộc vốn (VCSH/TS ≥ min_equity_to_assets) áp RIÊNG cho từng đường theo cùng luật một bước (fin_a): đường

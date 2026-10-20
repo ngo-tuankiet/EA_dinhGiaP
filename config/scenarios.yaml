@@ -32,7 +32,8 @@ Bull:
     nim_cap: 0.06
     cir_mult: 0.9
     cir_floor: 0.15
-    sustainable_roe_delta: 0.02     # D30: ROE bền vững cũng phải biến thiên
+    # D67: không còn sustainable_roe_delta — ROE bền vững NH của kịch bản tính lại từ driver đã sốc
+    # (sensitivity.apply_scenario_adjustments), ROE ngành không sốc.
     credit_cost_mult: 0.9
   nonfin:
     # Sốc CỘNG cho tăng trưởng: sốc nhân ×1,2 làm Bull = Base khi g = 0 và làm
@@ -55,7 +56,6 @@ Bear:
     nim_floor: 0.01
     cir_mult: 1.1
     cir_cap: 0.70
-    sustainable_roe_delta: -0.02
     credit_cost_mult: 1.5           # rủi ro chính của NH VN: chi phí tín dụng tăng
   nonfin:
     revenue_growth_delta: -0.03

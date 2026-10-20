@@ -42,6 +42,9 @@ def apply_scenario_adjustments(company: Union[Company, CompanyBank], scenario: s
     và ROE BỀN VỮNG — không chỉ credit growth/NIM. Bất định thật của định giá
     ngân hàng nằm gần hết ở khối terminal; bản cũ chỉ nhiễu giai đoạn dự phóng
     nên dải Bull-Bear chỉ ±6%, tạo cảm giác an toàn giả.
+
+    D67: ROE bền vững NH của kịch bản = ROE riêng Base + (roe5 driver đã sốc − roe5 driver Base) thay cho ±2 điểm %
+    cố định; ROE_T kịch bản = hội tụ λ về ROE ngành (không sốc); driver gốc sốc cùng hệ số nên năm 5 = ROE_T.
     """
     import copy
     comp_copy = copy.deepcopy(company)
@@ -54,26 +57,40 @@ def apply_scenario_adjustments(company: Union[Company, CompanyBank], scenario: s
     sec = (cfg.get("bank") if is_bank else cfg.get("nonfin")) or {}
 
     if is_bank:
-        a.credit_growth = _scaled(a.credit_growth,
-                                  sec.get("credit_growth_mult", 1.0),
-                                  sec.get("credit_growth_cap"), sec.get("credit_growth_floor"))
+        from valuation.engine.forecast_bank import bank_own_roe, driver_roe5
+
+        assert isinstance(comp_copy, CompanyBank)  # thu hẹp kiểu cho mypy (is_bank đã xác định)
+        a = comp_copy.assumptions
+
+        # D67 (phi chọn phương án b): ROE dài hạn của kịch bản tính lại từ driver đã sốc → đo trước khi sốc.
+        own_roe, roe5_before = bank_own_roe(comp_copy), driver_roe5(comp_copy)
+        shocks = {  # driver LN: (hệ số, trần, sàn)
+            "credit_growth": (sec.get("credit_growth_mult", 1.0), sec.get("credit_growth_cap"),
+                              sec.get("credit_growth_floor")),
+            "nim": (sec.get("nim_mult", 1.0), sec.get("nim_cap"), sec.get("nim_floor")),
+            "cir": (sec.get("cir_mult", 1.0), sec.get("cir_cap"), sec.get("cir_floor")),
+            "credit_cost": (sec.get("credit_cost_mult", 1.0), None, None),
+        }
+        for k, args in shocks.items():
+            setattr(a, k, _scaled(getattr(a, k), *args))
+        # Driver gốc sốc cùng hệ số: kịch bản là bộ driver máy đặt mới → năm 3–5 phai từ driver đã sốc về ROE_T của
+        # kịch bản, năm 5 = ROE_T (trước D67 delta r4a dồn toàn bộ sốc vào năm 5 → LN6/LN5 nhảy bậc). Phần analyst
+        # sửa so với driver gốc vẫn cộng delta như Base.
+        if a.driver_base:
+            a.driver_base = {k: _scaled(v, *shocks[k]) if k in shocks else v for k, v in a.driver_base.items()}
         if getattr(a, "deposit_growth", None):
             a.deposit_growth = _scaled(a.deposit_growth,
                                        sec.get("deposit_growth_mult", 1.0),
                                        sec.get("deposit_growth_cap"), sec.get("deposit_growth_floor"))
-        a.nim = _scaled(a.nim, sec.get("nim_mult", 1.0),
-                        sec.get("nim_cap"), sec.get("nim_floor"))
-        a.cir = _scaled(a.cir, sec.get("cir_mult", 1.0),
-                        sec.get("cir_cap"), sec.get("cir_floor"))
-        a.credit_cost = _scaled(a.credit_cost, sec.get("credit_cost_mult", 1.0))
-        # ROE bền vững chi phối giá trị terminal -> BẮT BUỘC phải biến thiên.
-        roe_delta = sec.get("sustainable_roe_delta")
-        if roe_delta and getattr(a, "sustainable_roe", None):
-            a.sustainable_roe = max(0.0, a.sustainable_roe + roe_delta)
-        # ROE terminal hội tụ về ROE ngành: λ = 1 thì sốc chỉ trên ROE riêng mất tác dụng → sốc cả đích.
-        ab = comp_copy.assumptions if isinstance(comp_copy, CompanyBank) else None
-        if roe_delta and ab is not None and ab.industry_roe is not None:
-            ab.industry_roe = max(0.0, ab.industry_roe + roe_delta)
+        roe5_after = driver_roe5(comp_copy)
+        if roe5_before is None or roe5_after is None:
+            raise ValueError(f"BANK_SCENARIO_ROE5_UNDEFINED:{comp_copy.ticker}:{scenario} — VCSH bình quân năm 5 ≤ 0")
+        # roe5 kịch bản = ROE riêng của Base + phần driver đã sốc làm đổi roe5. Máy đặt: ROE riêng ≡ roe5 driver
+        # (repo) → đúng bằng ROE năm 5 của driver đã sốc, không cộng số cố định; analyst nhập ROE bền vững thì giữ
+        # mức đó và chỉ dịch phần sốc (Bear − Base chỉ do kịch bản).
+        a.sustainable_roe = own_roe + (roe5_after - roe5_before)
+        # ROE ngành KHÔNG sốc (D67): là dữ liệu quan sát (trung vị ROE lịch sử của nhóm), đích dài hạn của hội tụ
+        # Damodaran, không phải driver của NH; sốc nó cần số cố định (±2 điểm % cũ) hoặc dự phóng lại cả nhóm.
     else:
         g_delta_rev = float(sec.get("revenue_growth_delta", 0.0))
         a.revenue_growth = [

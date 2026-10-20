@@ -531,17 +531,24 @@ bank_terminal:
   # hợp lý cần ROE trên VCSH ĐẦU kỳ: ở trạng thái dừng VCSH tăng g nên VCSH bình quân năm 6 = B5·(1 + g/2) →
   # LN6 = ROE_T·B5·(1 + g/2), P/B hợp lý = (ROE_T(1 + g/2) − g)/(COE − g) (bank_general).
   # Mô hình 3 giai đoạn (Damodaran): năm 1 → (5 − N) theo driver (NIM/CIR/chi phí tín dụng); N năm cuối ROE
-  # bình quân phai tuyến tính từ ROE driver về ROE_T (trọng số 1/N … 1) → năm 5 = ROE_T, LN năm 6 nối liền
-  # năm 5 (trước fx2 λ = 1 làm LN nhảy bậc: EIB +271%, VPB +83%). Phần chênh ghi ở dòng roe_fade_adjustment
-  # (cấp LNTT) của dự phóng để bảng IS vẫn khớp.
+  # bình quân phai tuyến tính từ ROE driver gốc về ROE_T (trọng số 1/N … 1) → năm 5 = ROE_T, LN năm 6 nối liền
+  # năm 5 (trước fx2 λ = 1 làm LN nhảy bậc: EIB +271%, VPB +83%) — đúng cho giả định máy đặt và mọi kịch bản
+  # Bull/Bear (D67: kịch bản sốc cả driver gốc, roe5 kịch bản tính lại từ driver đã sốc, ROE ngành không sốc);
+  # analyst sửa driver thì năm 5 lệch ROE_T đúng phần delta. Phần chênh ghi ở dòng roe_fade_adjustment (cấp LNTT)
+  # của dự phóng để bảng IS vẫn khớp.
   roe_transition_years: 3
-  # Dòng cân phai ROE tính từ driver GỐC (AssumptionsBank.driver_base — repo chụp lúc dựng); driver analyst/
-  # kịch bản sửa cộng thẳng: LN = LN_phai(gốc) + (LN_driver_sửa − LN_driver_gốc) trên cùng trạng thái đầu kỳ
+  # Dòng cân phai ROE tính từ driver GỐC (AssumptionsBank.driver_base — repo chụp lúc dựng; kịch bản sốc cả driver
+  # gốc, D67); driver analyst sửa cộng thẳng: LN = LN_phai(gốc) + (LN_driver_sửa − LN_driver_gốc) trên cùng trạng thái đầu kỳ
   # (r4a; cơ chế r3a "năm theo driver" bỏ dòng cân trong khi RI terminal vẫn theo ROE_T → đảo dấu, phản biện
   # r3). Phai chính driver về mức ngụ ý ROE_T cần chọn driver nào gánh phần chênh — không có chuẩn CFA/Damodaran
   # nên chưa làm. Phần LN năm 5 do dòng cân ≥ ngưỡng → cờ BANK_ROE_FADE_PLUG:x% (cảnh báo, không chặn).
   # ĐỀ XUẤT claude 10% — chờ phi duyệt.
   fade_plug_flag_share: 0.10
+  # D67 — cờ BANK_TERMINAL_JUMP (cảnh báo) khi |LN6/LN5 − (1 + g)| vượt ngưỡng, LN6 = ROE_T đầu kỳ × VCSH5 (RI
+  # terminal): bắt tái phát bước nhảy năm 5 → 6 (phản biện r4: CTG Bear +361%, VPB Bear lỗ năm 5). Năm 5 = ROE_T
+  # vẫn lệch (tăng VCSH năm 5 − g)/2 vì LN5 tính trên VCSH bình quân: đo 19 TCTD Base 20/10 +0,03…+0,07.
+  # ĐỀ XUẤT claude 0,10 — chờ phi duyệt.
+  terminal_jump_flag_tolerance: 0.10
   roe_fallback: 0.15
   # Trần DUY NHẤT thay cho hệ thống tier 15%/20% của D20: tier tạo vách đứng phi
   # kinh tế ở ngưỡng 18% (17,9% -> trần 15%; 18,1% -> trần 20%).
