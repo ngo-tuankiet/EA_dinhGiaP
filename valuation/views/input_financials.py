@@ -86,7 +86,8 @@ def auto_balance_bank_projections(
 
         toi = nii + non_ii
         ppop = toi - opex
-        pbt = ppop - prov
+        # Phần phai ROE về ROE terminal (năm chuyển tiếp, forecast_bank) nằm ở cấp LNTT — giữ khi cân lại.
+        pbt = ppop - prov + row.get("roe_fade_adjustment", 0.0)
 
         # Cập nhật ngược lại
         row["operating_expenses"] = opex

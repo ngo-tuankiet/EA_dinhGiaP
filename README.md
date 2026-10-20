@@ -85,7 +85,23 @@ Các key quan trọng:
 - `VNSTOCK_API_KEY`: cập nhật dữ liệu mới từ vnstock.
 - `DEEPSEEK_API_KEY`: sinh báo cáo AI khi bấm nút trong app.
 - `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_SHEET_MASTER_ID`, `GOOGLE_DRIVE_FOLDER_ID`: xuất Google.
-- `DISCORD_WEBHOOK_URL`: gửi cảnh báo.
+- `DISCORD_WEBHOOK_URL`: gửi cảnh báo và báo cáo sáng.
+- `DISCORD_BOT_TOKEN`, `DISCORD_OWNER_ID`, `DISCORD_CHANNEL_ID`: bot Discord nhận lệnh trong 1 kênh
+  (để trống `DISCORD_OWNER_ID` = mọi thành viên kênh; điền ID = chỉ 1 người).
+
+## Discord: báo cáo sáng và bot
+
+Chỉ cài trên host chủ dự án (cần `pip install -r requirements-integrations.txt` trong `~/.venv`).
+
+- **Báo cáo sáng** (`scripts/daily_report.py`, thứ 2–6 lúc 07:50 qua launchd): cập nhật giá VN100
+  và vĩ mô, rồi gửi 5 mã cơ hội định giá (cùng bộ lọc tab VN100), thay đổi so với báo cáo trước
+  và khung vĩ mô. Không gọi DeepSeek. Thử không gửi: `python scripts/daily_report.py --dry-run --no-refresh`.
+  Lịch sử lưu ở `.daily_report/history/`; ngưỡng ở `config/defaults.yaml → daily_report`.
+- **Bot** (`scripts/discord_bot.py`, launchd giữ chạy liên tục): gõ mã VN100 (vd `FPT`) để định giá,
+  `!baocao` để nhận báo cáo ngay. Mã chưa qua cổng kiểm chứng chỉ hiện lý do, không hiện FV.
+  Cần bật *MESSAGE CONTENT INTENT* trong Discord Developer Portal. Bot offline khi máy ngủ.
+- Bật/tắt: `launchctl bootstrap gui/$UID ~/Library/LaunchAgents/vn.antigravity-vn100.<discord-bot|daily-report>.plist`
+  / `launchctl bootout gui/$UID/vn.antigravity-vn100.<…>`. Log ở `logs/discord_bot.log`, `logs/daily_report.log`.
 
 ## Đẩy lên GitHub
 

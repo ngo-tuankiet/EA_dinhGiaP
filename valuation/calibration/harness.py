@@ -11,6 +11,7 @@ và `git_sha`, để câu hỏi "giữa hai lần chạy này thì cái gì đã
 from __future__ import annotations
 
 import datetime
+import hashlib
 import logging
 import subprocess
 from dataclasses import dataclass, replace
@@ -37,9 +38,23 @@ _ENGINE_CONFIG_KEYS = (
     "proxy_valuation",
     "ddm",
     "bank_terminal",      # thêm ở GĐ5
+    "bank_forecast",      # lịch tăng trưởng tín dụng/payout NH
     "securities",         # thêm ở GĐ3
     "relative_pb",        # thêm ở GĐ3
     "forecast",           # thêm ở GĐ7
+    "dcf",                # thuế terminal, tỷ lệ doanh thu chưa thực hiện (fx2), wacc_tax_mode (r3a)
+    # r3b: các mục fx1–r3a thêm/chuyển chỗ mà engine đọc (đổi FV hoặc quyết định công bố/khuyến nghị).
+    # tests/test_golden_consensus.py kiểm mọi khóa đường định giá thật đọc đều nằm trong snapshot.
+    "relative_multiples",  # capital_raise_* (loại/pro-forma P/B trước phát hành)
+    "publication_gate",    # leg_ratio_review, ngưỡng upside/downside cực đoan
+    "audit",               # FILING_PRECEDENCE, ngưỡng trọng yếu xung đột, max_unaudited_periods
+    "peer_multiples",
+    "insurance",
+    "guardrails",
+    "corporate_actions",
+    "publication_lag_days",
+    "margin_of_safety",    # ngưỡng khuyến nghị (decision_engine)
+    "deepseek_report",     # identity_tolerance_pct / *_warning_pct của run_deterministic_checks
 )
 
 
@@ -69,9 +84,17 @@ def _git_sha() -> Optional[str]:
 
 
 def _engine_config_snapshot() -> dict[str, Any]:
-    from valuation.config import load_defaults
-    d = load_defaults() or {}
-    return {k: d[k] for k in _ENGINE_CONFIG_KEYS if k in d}
+    import valuation.config as vc
+
+    d = vc.load_defaults() or {}
+    snap = {k: d[k] for k in _ENGINE_CONFIG_KEYS if k in d}
+    # File config ngoài defaults.yaml cũng đổi FV/cổng công bố (r4: sotp_holdings.yaml đổi FV MSN +36%,
+    # event_holds.yaml đổi mã được công bố) và có thể chưa commit (git_sha không phân biệt) → chụp hash nội dung.
+    snap["config_files_sha256"] = {
+        p.name: hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None
+        for p in (vc.SOTP_HOLDINGS_FILE, vc.EVENT_HOLDS_FILE)
+    }
+    return snap
 
 
 def _all_routed_tickers() -> list[str]:

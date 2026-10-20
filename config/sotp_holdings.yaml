@@ -1,0 +1,173 @@
+# Cổ phần công ty con/liên kết ĐANG NIÊM YẾT của các tập đoàn định giá SOTP (chế độ SOTP_HOLDINGS).
+#
+# Công thức (valuation/engine/models/sotp.py, Damodaran "cross holdings"):
+#   FV/cp = [VCSH mẹ hợp nhất + Σ (stake × vốn hóa − giá sổ phần sở hữu)] / số cp × (1 − chiết khấu holding)
+#   giá sổ phần sở hữu = carrying_value_bn nếu khai (khoản đầu tư ghi giá gốc), không thì stake × VCSH mẹ
+#   của công ty con (phần đã nằm trong số hợp nhất). Phần chưa niêm yết giữ theo sổ sách hợp nhất.
+# DB chỉ có BCTC hợp nhất → không có nợ ròng cấp công ty mẹ; công thức trên là dạng tương đương.
+#
+# stake = LỢI ÍCH KINH TẾ hiệu quả (trực tiếp + gián tiếp), KHÔNG phải tỷ lệ pháp lý của pháp nhân
+# trung gian. Mỗi holding bắt buộc có `source` (https://) — không bịa tỷ lệ (AGENTS luật vàng #1).
+#
+# CỔNG CÔNG BỐ: `reviewed_by` trống → SOTP_HOLDINGS_UNVERIFIED (chặn). `as_of` (ngày người dùng
+# đối chiếu xong) cũ hơn review_ttl_days → SOTP_HOLDINGS_STALE (chặn). Số liệu dưới đây do agent
+# chẩn đoán tìm ngày 19/10/2026 (REE, TCH, GEL thêm 20/10/2026 sau khi ingest giá công ty con ngoài VN100;
+# MSR, MML thêm 20/10/2026 theo quyết định phi Q4);
+# người dùng đối chiếu BCTN 2025 / thuyết minh BCTC Q2/2026 rồi mới điền.
+# Lưu ý: một mã nắm cổ phần (holding ticker) không được đồng thời là holder (chống đệ quy).
+
+review_ttl_days: 180
+
+holders:
+  VIC:
+    as_of: null
+    reviewed_by: null
+    known_gaps: >-
+      VinFast (VFS Nasdaq, USD, chưa có trong DB) và các mảng chưa niêm yết giữ theo sổ sách hợp nhất
+      (âm khoảng 64.000 tỷ, đã nằm trong VCSH mẹ hợp nhất).
+    holdings:
+      - ticker: VHM
+        stake: 0.7158
+        source_date: 2026-07-20
+        source: "https://thitruongtaichinhtiente.vn/vingroup-muon-chuyen-quyen-so-huu-hon-4-8-trieu-co-phieu-vhm-84366.html"
+        note: >-
+          2,94 tỷ / 4,107 tỷ cp; cổ tức CP 100% ngày 06/08/2026 không đổi tỷ lệ. Cùng chuỗi:
+          https://theinvestor.vn/vingroup-transfers-152-mln-vinhomes-shares-cuts-stake-to-7107-d19418.html
+      - ticker: VPL
+        stake: 0.855
+        source_date: 2026-07-30
+        source: "https://mbs.com.vn/files/uploads/2026/07/VPL12601_BCtraiphieu_20260730.pdf"
+        note: >-
+          1.877.450.377 cp khớp DB; VPL đã chuyển phần lớn cp VIC đang nắm cho trái chủ trong 6T26
+          nên sở hữu chéo không đáng kể.
+      - ticker: VRE
+        stake: 0.1837
+        source_date: 2025-12-31
+        source: "https://doanhnhan.baophapluat.vn/co-dong-cua-vincom-retail-vre-sap-nhan-duoc-hon-2-200-ty-dong-tien-tra-co-tuc.html"
+        note: "Phần gián tiếp 41,5% qua SDI đã chuyển nhượng; còn sở hữu trực tiếp."
+
+  MSN:
+    as_of: null
+    reviewed_by: null
+    known_gaps: >-
+      WCM, Phúc Long giữ theo sổ sách hợp nhất. MSR, MML khai báo theo thị giá từ 20/10/2026 (quyết định phi Q4,
+      r4b); đo trước khi thêm: FV MSN 92.535đ (−0,8% CTCK n=6). Gần như toàn bộ phần tăng đến từ MSR: P/B ~5,0,
+      free float ~7%, giá ~35.000 (07/2026) → 65.500 (10/2026); thương vụ Elmet 4,99% (định giá vốn chủ MSR
+      ~2,5 tỷ USD, cùng cỡ vốn hóa;
+      https://mekongasean.vn/masan-chuyen-nhuong-gan-5-von-cua-msr-cho-doi-tac-my-59948.html).
+      MSR — PHI RÀ TRƯỚC KHI ĐIỀN reviewed_by (fin_a 20/10/2026, đối chiếu nguồn báo chí, chưa có CBTT gốc):
+      (a) 92,89% (05/2026) và ~87,46% (sau Elmet) KHÔNG trừ thẳng được (92,89% − 4,99% = 87,90%) vì KHÁC MẪU SỐ.
+      CafeF 01/10/2026 (https://cafef.vn/tap-doan-my-da-mua-xong-499-co-phan-masan-high-tech-materials-188261001114751078.chn):
+      Tầm nhìn Masan nắm ~1,02 tỷ cp ≈ 92,45% trước giao dịch; Elmet nhận 55,14 tr cp = 4,99% → mẫu số ≈ 1.105 tr
+      cp. 92,89% tính trên 1.099,83 tr cp (= số cp trong DB, BCTC Q2/2026): 1.021,6 tr cp ở cả hai mốc. Chênh 0,44
+      điểm % khớp đợt ESOP ~5,2 tr cp (0,47%, HĐQT 07/2026,
+      https://doanhnhan.baophapluat.vn/masan-high-tech-materials-msr-chao-ban-5-2-trieu-co-phieu-esop-gia-15-000-dong-dan-lanh-dao-cap-cao-mua-khoi-luong-lon.html)
+      — SUY LUẬN, chưa thấy nguồn xác nhận đợt ESOP đã phát hành xong. (b) Trạng thái: CafeF ghi đã khớp thoả
+      thuận 55,14 tr cp sáng 01/10/2026 (~3.240 tỷ); Tầm nhìn Masan còn đăng ký bán thêm 5,01% cho nhà đầu tư
+      tổ chức (01–30/10/2026) → có thể còn ~82,45% (911,08 tr cp). (c) Engine tính vốn hóa = giá × số cp DB, nên
+      stake phải CÙNG MẪU SỐ với DB: sau Elmet 966,4 / 1.099,83 = 87,87% (87,46% là trên ~1.105 tr cp); sau cả
+      10%: 911,08 / 1.099,83 = 82,84% — tới khi DB có số cp mới. Mỗi 1 điểm % ≈ 341đ/cp MSN (20/10). Stake
+      CHƯA đổi (0,9289): phi quyết.
+    holdings:
+      - ticker: MCH
+        stake: 0.660
+        source_date: 2025-12-15
+        source: "https://www.kbsec.com.vn/pic/Service/KBSV_MSN_Baocaocapnhat_20251215.pdf"
+        note: >-
+          Lợi ích kinh tế (Bảng 15 SOTP). Sở hữu pháp lý khoảng 69,4%
+          (https://bbw.vn/masan-du-kien-nang-so-huu-tai-masan-consumer-len-749-60798.html, 07/10/2026);
+          ESOP 1% ngày 23/06/2026 làm loãng còn khoảng 65,3%; Lepus đăng ký mua thêm tối đa 73 tr cp
+          trong 09–23/10/2026 — chỉ nâng stake khi BCTC đã phản ánh tiền trả. Mỗi 1 điểm % ≈ 961đ/cp MSN.
+      - ticker: TCB
+        stake: 0.198
+        source_date: 2025-12-15
+        source: "https://www.kbsec.com.vn/pic/Service/KBSV_MSN_Baocaocapnhat_20251215.pdf"
+        note: >-
+          Đối chiếu: lãi từ TCB 2025 4.997 tỷ
+          (https://thoibaotaichinhvietnam.vn/ket-thuc-nam-2025-doanh-thu-masan-hon-81600-ty-dong-loi-nhuan-tang-16-lan-191670.html)
+          / LNST mẹ TCB 2025 25.290 tỷ (DB) = 19,76%.
+      - ticker: MSR
+        stake: 0.9289
+        source_date: 2026-05-13
+        source: "https://thitruongtaichinhtiente.vn/masan-hoan-tat-ban-2-von-masan-high-tech-materials-tang-ty-le-free-float-co-phieu-msr-len-7-11-82873.html"
+        note: >-
+          Quyết định phi 20/10/2026 (Q4): cộng theo thị giá. MSN nắm qua CTCP Tầm nhìn Masan (MSN sở hữu 100%)
+          sau khi bán 2% vốn, free float 7,11% → lợi ích kinh tế 92,89% (pháp lý của pháp nhân trung gian = kinh tế
+          vì sở hữu 100%). Thương vụ Elmet 4,99% (báo chí ghi đã khớp 01/10/2026) và mẫu số cp: xem known_gaps.
+      - ticker: MML
+        stake: 0.943
+        source_date: 2025-12-15
+        source: "https://www.kbsec.com.vn/pic/Service/KBSV_MSN_Baocaocapnhat_20251215.pdf"
+        note: >-
+          Quyết định phi 20/10/2026 (Q4): cộng theo thị giá. Lợi ích kinh tế 94,3% (KBSV Bảng 15 SOTP). Chưa
+          tìm được tỷ lệ pháp lý/pháp nhân trung gian có nguồn; nguồn cuối 2025 — người dùng đối chiếu BCTC Q2/2026.
+
+  GEX:
+    as_of: null
+    reviewed_by: null
+    known_gaps: >-
+      GEL đã có giá trong DB (20/10/2026) → khai báo trực tiếp GEL thay look-through VGC (VGC là công ty con
+      của GEL, khai cả hai là đếm trùng). Các công ty liên kết (17.860 tỷ, tăng từ 2.947 tỷ trong 6T26,
+      chưa rõ thành phần) giữ theo sổ sách.
+    holdings:
+      - ticker: GEE
+        stake: 0.7596
+        source_date: 2026-02-13
+        source: "https://www.kbsec.com.vn/pic/Service/KBSV_Baocaolandau_GEX_20260213.pdf"
+        note: "KBSV 76%; vnstock subsidiaries 75,96% (truy vấn 19/10/2026), sau đợt bán 3% GEE trong Q4/2025."
+      - ticker: GEL
+        stake: 0.7021
+        source_date: 2026-08-03
+        source: "https://tapchicongthuong.vn/tap-doan-gelex--gex-sap-tam-ung-co-tuc-tien-mat--du-kien-ipo-ha-tang-gelex-203138.htm"
+        note: >-
+          GEX nắm trực tiếp >79% Hạ tầng Gelex khi vốn 7.900 tỷ (790 tr cp) → sau IPO 100 tr cp còn
+          624,9/890 tr cp (https://nhadautu.vn/890-trieu-co-phieu-ha-tang-gelex-chinh-thuc-duoc-chap-thuan-niem-yet-tren-hose-d102630.html)
+          = 70,21%; vnstock/VCI cổ đông lớn GEL: CTCP Tập đoàn Gelex 624.900.000 cp = 70,21% (cập nhật 03/08/2026).
+          Chưa cộng 1,85% của Công ty TNHH Phát điện Gelex (chưa rõ thuộc GEX hay GEL). Thay look-through
+          VGC 35,253% (= 70,21% × GEL→VGC 50,21%) dùng khi GEL chưa có giá.
+      - ticker: EIB
+        stake: 0.10
+        carrying_value_bn: 3297
+        source: "https://nhadautu.vn/gelex-se-tang-so-huu-tai-eximbank-len-15-khi-dieu-kien-phap-ly-cho-phep-d103973.html"
+        note: >-
+          Đầu tư tài chính ngắn hạn ghi giá gốc 3.297 tỷ (giá trị hợp lý 3.981 tỷ cuối 2025). Tỷ lệ 10%
+          theo nguồn cuối 2025, chưa cập nhật sau khi EIB tăng lên 1.868,8 tr cp.
+
+  REE:
+    as_of: null
+    reviewed_by: null
+    known_gaps: >-
+      Bất động sản (E.Town, Etown Central...), các nhà máy điện/nước chưa niêm yết và M&E giữ theo sổ sách hợp
+      nhất. CHP (24,2% tại 30/06/2024) và PPC (20,74% tại 08/2024, Năng lượng REE đang thoái vốn) KHÔNG khai
+      báo vì nguồn tỷ lệ cũ hơn 2 năm. Nắm qua Công ty TNHH Năng lượng R.E.E — REE sở hữu 100%
+      (https://vnbusiness.vn/lai-tang-manh-nhung-cong-ty-thuy-dien-cua-ree-van-dung-truoc-nguy-co-bi-huy-tu-cach-dai-chung.html).
+    holdings:
+      - ticker: VSH
+        stake: 0.5258
+        source_date: 2026-06-30
+        source: "https://www.dnse.com.vn/senses/tin-tuc/thuy-dien-vinh-son-song-hinh-sap-tam-ung-co-tuc-bang-tien-mat-ty-le-15-35254969"
+        note: "Năng lượng REE 124,2 tr cp = 52,58% tại 30/06/2026; vnstock/VCI 124.212.978 cp = 52,58% (27/07/2026)."
+      - ticker: TBC
+        stake: 0.6042
+        source_date: 2025-12-31
+        source: "https://vnbusiness.vn/lai-tang-manh-nhung-cong-ty-thuy-dien-cua-ree-van-dung-truoc-nguy-co-bi-huy-tu-cach-dai-chung.html"
+        note: "Năng lượng REE 60,42% cuối 2025; vnstock/VCI 38.365.168 cp = 60,42% (27/07/2026)."
+      - ticker: TMP
+        stake: 0.4263
+        source_date: 2026-06-11
+        source: "https://doanhnhan.baophapluat.vn/co-dong-cua-thuy-dien-thac-mo-tmp-sap-nhan-duoc-280-ty-dong-tien-tra-co-tuc.html"
+        note: "Bài báo 42,6% (công ty liên kết, EVNGENCO2 51,9%); vnstock/VCI 29.843.740 / 70 tr cp = 42,63% (19/08/2026)."
+
+  TCH:
+    as_of: null
+    reviewed_by: null
+    known_gaps: "Hoàng Huy Property và các dự án BĐS chưa niêm yết giữ theo sổ sách hợp nhất."
+    holdings:
+      - ticker: HHS
+        stake: 0.5831
+        source_date: 2025-06-02
+        source: "https://mekongasean.vn/hoa-ng-huy-tch-chot-nga-y-mua-64-trieu-co-phieu-hhs-phat-ha-nh-rieng-le-42165.html"
+        note: >-
+          TCH dự kiến nâng từ 187,9 tr cp (51,06%) lên 251,9 tr cp (58,31%) qua phát hành riêng lẻ 64 tr cp HHS;
+          đã hoàn tất: vnstock/VCI 251.905.777 cp = 58,31% (13/08/2026), HHS 431,99 tr cp trong DB.
+

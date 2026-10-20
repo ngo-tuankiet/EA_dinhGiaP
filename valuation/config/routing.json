@@ -463,14 +463,15 @@
   },
   "SIP": {
     "sector": "KCN",
-    "primary": "RNAV",
+    "primary": "FCFF",
     "secondary": "EV/EBITDA",
     "weight_primary": 0.5,
     "weight_secondary": 0.5,
     "verified": false,
     "raw_primary": "RNAV / DCF",
     "raw_secondary": "EV/EBITDA",
-    "raw_weights": "RNAV quỹ đất"
+    "raw_weights": "RNAV quỹ đất",
+    "note": "s5 (RNAV F1): KCN ghi nhận tiền thuê theo đường thẳng (doanh thu chưa thực hiện ≈ 2,6× VCSH mẹ), ROE/CFO ổn định → DCF (FCFF, Δdoanh thu chưa thực hiện nằm trong vốn lưu động) + EV/EBITDA lịch sử. KCN bán đất ghi nhận một lần (KBC) vẫn RNAV. VGC giữ SOTP (đất KCN ghi giá gốc, phản biện C12)."
   },
   "VGC": {
     "sector": "KCN",
@@ -716,25 +717,27 @@
   },
   "PC1": {
     "sector": "Điện",
-    "primary": "SOTP",
+    "primary": "EV/EBITDA",
     "secondary": null,
     "weight_primary": 1.0,
     "weight_secondary": 0.0,
     "verified": false,
     "raw_primary": "SOTP / DCF",
     "raw_secondary": "EV/EBITDA",
-    "raw_weights": "SOTP"
+    "raw_weights": "SOTP",
+    "note": "s5 (đảo D39): SOTP không khai báo cổ phần niêm yết (DB không có công ty con niêm yết, không có báo cáo bộ phận) → dùng raw_secondary đã IMPLEMENTED (EV/EBITDA hợp nhất, Damodaran)."
   },
   "HDG": {
     "sector": "Điện",
-    "primary": "SOTP",
+    "primary": "FCFF",
     "secondary": null,
     "weight_primary": 1.0,
     "weight_secondary": 0.0,
     "verified": false,
     "raw_primary": "SOTP",
     "raw_secondary": "DCF / RNAV",
-    "raw_weights": "SOTP"
+    "raw_weights": "SOTP",
+    "note": "s5 (đảo D39): SOTP không khai báo cổ phần niêm yết → raw_secondary 'DCF / RNAV' lấy DCF (FCFF hợp nhất); RNAV chưa có dữ liệu dự án."
   },
   "GEX": {
     "sector": "Điện",
@@ -903,14 +906,15 @@
   },
   "VCG": {
     "sector": "Xây dựng",
-    "primary": "SOTP",
+    "primary": "FCFF",
     "secondary": null,
     "weight_primary": 1.0,
     "weight_secondary": 0.0,
     "verified": false,
     "raw_primary": "SOTP / P/B",
     "raw_secondary": "DCF",
-    "raw_weights": "SOTP"
+    "raw_weights": "SOTP",
+    "note": "s5 (đảo D39): SOTP không khai báo cổ phần niêm yết → raw_secondary DCF (FCFF hợp nhất). Hạn chế: quỹ đất BĐS ghi giá gốc không được định giá lại."
   },
   "HHV": {
     "sector": "Xây dựng",
@@ -1178,14 +1182,14 @@
   },
   "EVF": {
     "sector": "Tài chính",
-    "primary": "P/B",
-    "secondary": null,
-    "weight_primary": 1.0,
-    "weight_secondary": 0.0,
+    "primary": "RI",
+    "secondary": "P/B",
+    "weight_primary": 0.5,
+    "weight_secondary": 0.5,
     "verified": false,
-    "raw_primary": "P/B",
-    "raw_secondary": null,
-    "raw_weights": "Chưa golden test"
+    "raw_primary": "Thu nhập thặng dư (Residual Income)",
+    "raw_secondary": "So sánh P/B",
+    "raw_weights": "RI 50% + P/B 50% như NH (TCTD phi ngân hàng, mẫu BCTC TCTD); chưa golden test"
   },
   "GEE": {
     "sector": "Đa ngành",

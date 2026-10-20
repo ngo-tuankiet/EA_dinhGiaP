@@ -55,6 +55,7 @@ def unified_report(ticker: str, db_read: Session = Depends(get_read_db)):
         "target_mos": decision.get("target_mos"),
         "hard_gates_violations": decision.get("hard_gates_violations", []),
         "flags": res.get("flags", []),
+        "publication_allowed": res.get("publication_allowed", True),
     }
 
 

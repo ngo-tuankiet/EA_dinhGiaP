@@ -54,8 +54,9 @@ def test_sales_to_capital_from_operating_invested_capital():
     assert sales_to_capital(6_399, 15_607, 2_519, 1_788, 3_640, 4_856) == pytest.approx(0.816, abs=1e-3)
     # Vốn vận hành ≤ 0 (tiền và đầu tư lớn hơn vốn) → không tính được, trả None.
     assert sales_to_capital(1_000, 500, 0, 400, 200, 100) is None
-    # Ngoài dải cấu hình thì kẹp về biên (mặc định [0,3; 5,0]).
-    assert sales_to_capital(10_000, 1_000, 0, 0, 0, 0) == pytest.approx(5.0)
+    # Dải cấu hình [0,3; null]: kẹp sàn 0,3, không kẹp trên (VAS không vốn hóa thuê — bước s4).
+    assert sales_to_capital(10_000, 1_000, 0, 0, 0, 0) == pytest.approx(10.0)
+    assert sales_to_capital(100, 1_000, 0, 0, 0, 0) == pytest.approx(0.3)
 
 
 def test_capex_schedule_falls_as_growth_fades():

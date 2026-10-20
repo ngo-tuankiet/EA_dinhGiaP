@@ -1,7 +1,9 @@
 """Snapshot thành phần VN100 dùng cho ingest và định giá batch."""
+
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -10,7 +12,6 @@ from sqlalchemy.orm import Session
 
 from valuation.config import PROJECT_ROOT
 from valuation.db.models import Ticker
-
 
 UNIVERSE_FILE = PROJECT_ROOT / "config" / "vn100_universe.json"
 
@@ -27,6 +28,31 @@ def load_vn100_snapshot(path: Path = UNIVERSE_FILE) -> dict[str, Any]:
 
 def get_vn100_symbols() -> list[str]:
     return list(load_vn100_snapshot()["symbols"])
+
+
+def audit_universe() -> list[str]:
+    """Phạm vi thu cache nguồn / audit: VN100 rồi tới công ty con niêm yết khai trong config/sotp_holdings.yaml
+    (lỗi dữ liệu công ty con chặn mã mẹ — SOTP_SUBSIDIARY_DATA_ERROR). Mã con sai định dạng → ValueError, vì
+    mã đi thẳng vào lời gọi API nguồn và đường dẫn cache (AGENTS §5)."""
+    from valuation.config import sotp_holding_tickers
+
+    vn100 = get_vn100_symbols()
+    subs = sotp_holding_tickers() - set(vn100)
+    bad = sorted(t for t in subs if not re.fullmatch(r"[A-Z0-9]{3}", t))
+    if bad:
+        raise ValueError(
+            f"config/sotp_holdings.yaml: mã công ty con sai định dạng: {bad}"
+        )
+    return vn100 + sorted(subs)
+
+
+def select_audit_tickers(requested: list[str] | None) -> list[str]:
+    """Mã người dùng nhập (--tickers) phải thuộc audit_universe(); không nhập → toàn bộ phạm vi."""
+    allowed = audit_universe()
+    outside = sorted(set(requested or []) - set(allowed))
+    if outside:
+        raise ValueError(f"Mã ngoài VN100 và công ty con SOTP: {outside}")
+    return list(requested) if requested else allowed
 
 
 def sync_vn100_membership(

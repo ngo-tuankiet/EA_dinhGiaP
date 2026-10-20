@@ -49,52 +49,99 @@ def test_future_ex_dates_not_applied_early(db):
     )
 
 
-def test_undated_split_flag_raised_until_override_added(monkeypatch):
-    """Dùng sự kiện giả lập trên bản DB test (conftest đã copy) để không phụ thuộc lần đồng bộ
-    corporate_actions gần nhất — dữ liệu thật được bổ sung ngày GDKHQ dần theo thời gian.
-    """
+def _mem_db():
+    """DB SQLite trong bộ nhớ: không mở phiên ghi vào file DB (kể cả bản copy của conftest)."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from valuation.db.models import Ticker
+    from valuation.db.session import Base
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    session.add(Ticker(ticker="ZZTEST", company_name="ZZTEST", is_vn100=True))
+    return session
+
+
+def _event(db, event_id, event_type, ratio, announced, ex=None):
     from valuation.db.models import CorporateAction
-    from valuation.db.session import SessionLocalWrite
+
+    db.add(
+        CorporateAction(
+            ticker="ZZTEST",
+            source_site="test",
+            source_event_id=event_id,
+            event_type=event_type,
+            title=f"test {event_type} {ratio:.2%}",
+            content_hash=event_id,
+            exercise_ratio=ratio,
+            announcement_date=announced,
+            ex_right_date=ex,
+        )
+    )
+    db.commit()
+
+
+def test_undated_split_flag_raised_until_override_added(monkeypatch):
+    """Sự kiện giả lập trên DB trong bộ nhớ để không phụ thuộc lần đồng bộ corporate_actions gần nhất."""
     from valuation.engine import ttm_helper
     from valuation.engine.ttm_helper import undated_split_flags
 
-    db = SessionLocalWrite()
-    try:
-        db.add(
-            CorporateAction(
-                ticker="ZZTEST",
-                source_site="test",
-                source_event_id="d48-flag",
-                event_type="BONUS_SHARE",
-                title="test thưởng 10%",
-                content_hash="d48-flag-test",
-                exercise_ratio=0.1,
-                announcement_date=date(2026, 9, 1),
-            )
-        )
-        db.flush()
-        monkeypatch.setattr(ttm_helper, "_load_shares_events", lambda: [])
-        assert undated_split_flags(db, "ZZTEST", date(2026, 9, 28)) == [
-            "CORPORATE_ACTION_UNDATED"
-        ]
-        # Quá cửa sổ 180 ngày → không cờ.
-        assert undated_split_flags(db, "ZZTEST", date(2027, 6, 1)) == []
-        # Đã có số cp ghi đè hiệu lực sau ngày công bố → không cờ.
-        monkeypatch.setattr(
-            ttm_helper,
-            "_load_shares_events",
-            lambda: [
-                {
-                    "ticker": "ZZTEST",
-                    "effective_date": "2026-09-21",
-                    "shares_outstanding": 1,
-                }
-            ],
-        )
-        assert undated_split_flags(db, "ZZTEST", date(2026, 9, 28)) == []
-    finally:
-        db.rollback()
-        db.close()
+    db = _mem_db()
+    _event(db, "d48-flag", "BONUS_SHARE", 0.1, date(2026, 9, 1))
+    monkeypatch.setattr(ttm_helper, "_load_shares_events", list)
+    assert undated_split_flags(db, "ZZTEST", date(2026, 9, 28)) == [
+        "CORPORATE_ACTION_UNDATED"
+    ]
+    # Quá cửa sổ 180 ngày → không cờ.
+    assert undated_split_flags(db, "ZZTEST", date(2027, 6, 1)) == []
+    # Đã có số cp ghi đè hiệu lực sau ngày công bố → không cờ.
+    monkeypatch.setattr(
+        ttm_helper,
+        "_load_shares_events",
+        lambda: [
+            {
+                "ticker": "ZZTEST",
+                "effective_date": "2026-09-21",
+                "shares_outstanding": 1,
+            }
+        ],
+    )
+    assert undated_split_flags(db, "ZZTEST", date(2026, 9, 28)) == []
+
+
+def test_undated_rights_issue_raises_flag_but_not_split_factor(monkeypatch):
+    """Dữ liệu F9: quyền mua thiếu ngày GDKHQ (SJS 67,23%, công bố 22/08/2026) → cờ RIGHTS_ISSUE_UNDATED
+    (thông tin, fx1); có override → hết cờ. Quyền mua CÓ ngày GDKHQ sau kỳ BCTC vẫn KHÔNG vào hệ số chia
+    (đi kèm tiền, chờ BCTC) → hệ số = 1; đối chứng cổ tức CP 15% cùng ngày → hệ số 1,15."""
+    from valuation.db.models import FinancialsQuarterly
+    from valuation.engine import ttm_helper
+    from valuation.engine.ttm_helper import undated_split_flags
+
+    db = _mem_db()
+    _event(db, "f9-rights", "RIGHTS_ISSUE", 0.6723, date(2026, 8, 22))
+    monkeypatch.setattr(ttm_helper, "_load_shares_events", list)
+    assert undated_split_flags(db, "ZZTEST", date(2026, 10, 20)) == ["RIGHTS_ISSUE_UNDATED"]
+    monkeypatch.setattr(
+        ttm_helper,
+        "_load_shares_events",
+        lambda: [{"ticker": "ZZTEST", "effective_date": "2026-10-01", "shares_outstanding": 1}],
+    )
+    assert undated_split_flags(db, "ZZTEST", date(2026, 10, 20)) == []
+
+    # Vốn điều lệ 1.000 tỷ (100 tr cp) ở 4 quý tới Q2/2026; GDKHQ 02/10/2026 sau kỳ BCTC.
+    for y, q in ((2025, 3), (2025, 4), (2026, 1), (2026, 2)):
+        db.add(FinancialsQuarterly(ticker="ZZTEST", fiscal_year=y, fiscal_quarter=q,
+                                   is_consolidated=True, is_restated=False, statement="BS",
+                                   line_item="paid_in_capital", value=1e12, currency="VND"))
+    _event(db, "f9-rights-dated", "RIGHTS_ISSUE", 0.5, date(2026, 9, 1), ex=date(2026, 10, 2))
+    keys = ttm_helper._CAPITAL_KEYS
+    assert ttm_helper._unreflected_split_factor(db, "ZZTEST", keys, date(2026, 10, 20)) == 1.0
+    _event(db, "f9-stock-div", "STOCK_DIVIDEND", 0.15, date(2026, 9, 1), ex=date(2026, 10, 2))
+    assert ttm_helper._unreflected_split_factor(
+        db, "ZZTEST", keys, date(2026, 10, 20)
+    ) == pytest.approx(1.15)
 
 
 def test_share_count_scales_dcf_leg_only(db, monkeypatch):

@@ -1,5 +1,6 @@
 from typing import Dict, Any
 import copy
+import math
 
 # Spread tối thiểu giữa WACC và terminal growth g.
 # Khi discount rate thấp (VND-base COE ~8%), g 4-5% làm spread mỏng → terminal
@@ -7,7 +8,7 @@ import copy
 MIN_WACC_G_SPREAD = 0.03
 
 
-def midcycle_level(values, revenues):
+def midcycle_level(values, revenues, window=None):
     """Mức lợi nhuận giữa chu kỳ = trung vị biên (GỒM năm lỗ) × doanh thu kỳ cuối.
 
     Chuẩn hóa theo BIÊN chứ không theo giá trị tuyệt đối: trung bình tuyệt đối nhiều
@@ -18,7 +19,19 @@ def midcycle_level(values, revenues):
     pairs = [(v, r) for v, r in zip(values, revenues) if v is not None and r and r > 0]
     if not pairs:
         return None
+    if window:
+        pairs = pairs[-int(window):]  # D61: chỉ N năm gần nhất (tránh trộn mô hình kinh doanh cũ)
     return statistics.median(v / r for v, r in pairs) * pairs[-1][1]
+
+
+def input_number(row: dict[str, Any], key: str) -> float | None:
+    """Số analyst nhập (bảng st.data_editor/AI bóc tách); None khi trống, NaN, 'null' hoặc không phải số
+    — để model báo THIẾU thay vì âm thầm coi là 0/100%."""
+    try:
+        v = float(row.get(key))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(v) else v
 
 
 class BaseValuationModel:

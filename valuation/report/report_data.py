@@ -176,8 +176,19 @@ def build_assumptions_table(company: Union[Company, CompanyBank]) -> Dict[str, A
             {"label": "Tỷ lệ chi trả cổ tức", "values": [_pct(a.dividend_payout_ratio)] * 5},
             {"label": "Thuế suất hiệu dụng", "values": [_pct(a.tax_rate)] * 5},
         ]
+        from valuation.engine.models.bank_general import converged_roe
+
+        ab = company.assumptions
         singles = [
-            {"label": "ROE bền vững (terminal)", "value": _pct(a.sustainable_roe)},
+            {"label": "ROE bền vững riêng (năm 5)", "value": _pct(ab.sustainable_roe)},
+            {"label": "ROE trung bình ngành", "value": _pct(ab.industry_roe)},
+            {
+                "label": f"ROE terminal (hội tụ λ = {ab.roe_convergence:.2f}, trước trần)",
+                "value": _pct(
+                    converged_roe(ab.sustainable_roe, ab.industry_roe, ab.roe_convergence)
+                    if ab.sustainable_roe is not None else None
+                ),
+            },
             {"label": "Tăng trưởng vĩnh viễn g", "value": _pct(a.terminal_growth_rate)},
             {"label": "Trọng số Residual Income", "value": _pct(a.weight_ri)},
         ]
@@ -213,16 +224,17 @@ def build_wacc_breakdown(company: Union[Company, CompanyBank]) -> List[Dict[str,
         {"label": "Chi phí vốn cổ phần Re (CAPM)", "value": _pct(coe)},
     ]
     if isinstance(company, Company):
-        from valuation.engine.wacc import compute_wacc, DEFAULT_DEBT_SPREAD
+        # Cùng hàm WACC mô hình DCF/RNAV dùng (thuế lá chắn nợ theo dcf.wacc_tax_mode) — không tự tính lại.
+        from valuation.engine.wacc import company_wacc, cost_of_debt_from_rf, wacc_tax_rate
         base_bs = company.historical_bs[-1]
         debt = (base_bs.short_term_debt + base_bs.long_term_debt) * 1e9
         equity_mkt = company.shares_outstanding * 1e6 * company.current_price
-        cod = a.cost_of_debt if a.cost_of_debt is not None else a.risk_free_rate + 0.03
-        wacc = compute_wacc(coe, cod, equity_mkt, debt, a.tax_rate,
-                            floor=a.risk_free_rate + DEFAULT_DEBT_SPREAD)
+        cod = a.cost_of_debt if a.cost_of_debt is not None else cost_of_debt_from_rf(a.risk_free_rate)
+        wacc = company_wacc(company)
         total = equity_mkt + debt
         rows += [
             {"label": "Chi phí nợ vay trước thuế (Rd)", "value": _pct(cod)},
+            {"label": "Thuế cho lá chắn thuế nợ", "value": _pct(wacc_tax_rate(a))},
             {"label": "Tỷ trọng vốn cổ phần E/(D+E) — theo market cap", "value": _pct(equity_mkt / total if total > 0 else None)},
             {"label": "Tỷ trọng nợ vay D/(D+E)", "value": _pct(debt / total if total > 0 else None)},
             {"label": "WACC", "value": _pct(wacc)},

@@ -37,6 +37,7 @@ from valuation.db.session import SessionLocalRead
 from valuation.engine.batch import value_ticker
 from valuation.engine.decision_engine import REC_LABELS_VI
 from valuation.engine.flag_descriptions import describe_flags
+from valuation.engine.models.bank_general import converged_roe
 from valuation.engine.sector_router import route
 from valuation.engine.valuate import valuate
 from valuation.ingest.universe import get_vn100_symbols
@@ -441,7 +442,8 @@ def collect(db, as_of: datetime.date) -> dict:
                 cc=a.credit_cost[0],
                 cc_ttm=bank_extra["cc_ttm"],
                 roe_ttm=bank_extra["roe_ttm"],
-                roe_s=a.sustainable_roe,
+                # Cột 'ROE bền vững (terminal)': ROE năm 5 sau hội tụ ROE ngành (λ), trước trần.
+                roe_s=converged_roe(a.sustainable_roe, a.industry_roe, a.roe_convergence),
                 payout=a.dividend_payout_ratio,
                 ea_min=a.min_equity_to_assets,
                 ea_now=bank_extra["ea_now"],

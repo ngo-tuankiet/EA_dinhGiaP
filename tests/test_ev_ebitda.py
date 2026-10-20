@@ -48,8 +48,9 @@ def test_positive_equity_value_no_false_flag():
 
 
 def test_hand_calc_ev_ebitda_normal_case():
-    """Ca tính tay: EBITDA norm = mean(1000,1100,1200)=1100 tỷ; EV=1100*7=7700 tỷ;
-    net_debt = 2000-500=1500 tỷ; equity=6200 tỷ; fvps=6200e9/100e6=62,000 VND."""
+    """Ca tính tay (mã không chu kỳ, fx2: bội số trailing × EBITDA TTM): EBITDA = 1200 tỷ (kỳ cuối);
+    EV = 1200 × 7 = 8400 tỷ; net_debt = 2000 − 500 = 1500 tỷ; equity = 6900 tỷ; fvps = 6900e9/100e6 = 69.000đ.
+    (Cũ: trung bình 3 kỳ chồng nhau 1100 tỷ → 62.000đ.)"""
     cf_dict = {
         'ebitda_history': [1000.0, 1100.0, 1200.0],
         'total_debt': 2_000e9,
@@ -61,7 +62,7 @@ def test_hand_calc_ev_ebitda_normal_case():
     m = EVEBITDAValuationModel('TST3', cf_dict, assumptions)
     res = m.perform_valuation()
 
-    assert res['normalized_ebitda'] == pytest.approx(1100e9)
-    assert res['enterprise_value'] == pytest.approx(7700e9)
-    assert res['equity_value'] == pytest.approx(6200e9)
-    assert res['blended_fair_value_per_share'] == pytest.approx(62_000.0)
+    assert res['normalized_ebitda'] == pytest.approx(1200e9)
+    assert res['enterprise_value'] == pytest.approx(8400e9)
+    assert res['equity_value'] == pytest.approx(6900e9)
+    assert res['blended_fair_value_per_share'] == pytest.approx(69_000.0)

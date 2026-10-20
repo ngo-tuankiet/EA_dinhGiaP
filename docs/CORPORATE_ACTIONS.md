@@ -67,6 +67,11 @@
   GDKHQ, `source_url` VSDC). Khi VSDC chưa công bố số chính thức, dùng số đăng ký trước sự kiện ×
   (1 + tỷ lệ) và ghi "tạm tính" trong `note`; thay bằng số chính thức khi có.
 - Cờ `CORPORATE_ACTION_UNDATED` nhắc khi một sự kiện như vậy (công bố trong 180 ngày) chưa có override.
+- Quyền mua thiếu ngày GDKHQ mang cờ riêng `RIGHTS_ISSUE_UNDATED` (mức thông tin): quyền mua không vào hệ
+  số chia (đi kèm tiền, chờ BCTC) nên không làm sai số cp; bảng xếp hạng không coi là lỗi dữ liệu (fx1).
+- Định giá theo `as_of` quá khứ (golden/registry): giá `prices_daily` đã điều chỉnh lùi theo các đợt cổ tức
+  CP/thưởng tới ngày giá cuối, nên `repo.get_shares_outstanding_repo` quy số cp tại `as_of` về cùng gốc giá
+  (× (1 + Σ tỷ lệ cùng ngày) các đợt có GDKHQ trong (as_of, ngày giá cuối]). Quyền mua chưa quy đổi (TERP).
 - KHÔNG quy đổi tay cả giá trị hợp lý theo tỷ lệ chia: nhánh bội số (P/E, EV/EBITDA lịch sử tính trên
   giá đã điều chỉnh) bất biến theo số cp; chỉ nhánh DCF thay đổi.
 

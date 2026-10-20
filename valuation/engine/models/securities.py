@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional
 import statistics
 
 from valuation.config import load_defaults
+from valuation.engine.forecast_bank import begin_roe_from_avg, ni_from_avg_roe
 
 from .base import BaseValuationModel
 
@@ -45,6 +46,8 @@ _DEFAULTS = {
     "terminal_roe_floor": 0.05,
     "terminal_roe_cap": 0.20,
     "payout_ratio": 0.20,
+    "payout_cap": 1.0,
+    "payout_years": 3,
     "weight_ri": 0.5,
     "forecast_years": 5,
 }
@@ -72,6 +75,52 @@ def roe_path_from_history(
     # Chỉ có 1 kỳ: đành dùng VCSH cuối kỳ.
     if not out and net_income and equity and equity[-1] > 0:
         out.append(net_income[-1] / equity[-1])
+    return out
+
+
+def cash_payout_ratio(historical_is, historical_cf, cap: float, years: int) -> float | None:
+    """Payout tiền mặt = Σ cổ tức tiền đã trả / Σ LNST của `years` năm tài chính ĐẦY ĐỦ gần nhất
+    (bỏ kỳ TTM vì chồng lên năm trước), kẹp [0, cap] — như D47 cho NH, thay hằng số 0,20.
+    Không có năm đầy đủ hoặc Σ LNST ≤ 0 → None (dùng payout cấu hình kèm cờ)."""
+    ni = {x.year: x.net_income for x in historical_is}
+    full = [cf for cf in historical_cf if not cf.is_ttm_period and cf.year in ni][-years:]
+    total_ni = sum(ni[cf.year] for cf in full)
+    if not full or total_ni <= 0:
+        return None
+    return min(max(sum(cf.dividends_paid for cf in full) / total_ni, 0.0), cap)
+
+
+def gordon_payout_flags(label: str, payout: float, terminal_roe: float, g: float) -> list[str]:
+    """Damodaran (stable growth): g = ROE × (1 − payout) ⇒ payout* = 1 − g/ROE. Giá trị cuối kỳ RI
+    tăng theo g ngụ ý giữ lại g/ROE; payout dự phóng lệch payout* quá
+    bank_terminal.payout_consistency_tol → cờ cảnh báo, KHÔNG kẹp."""
+    if terminal_roe <= 0:
+        return []
+    implied = 1.0 - g / terminal_roe
+    if abs(payout - implied) > float(load_defaults()["bank_terminal"]["payout_consistency_tol"]):
+        return [f"{label}_PAYOUT_INCONSISTENT: payout {payout:.0%} vs Gordon 1−g/ROE {implied:.0%}"]
+    return []
+
+
+def apply_data_payout(assumptions: dict[str, Any], company) -> dict[str, Any]:
+    """Ghi payout từ dữ liệu vào assumptions (đè payout_ratio cấu hình) + đánh dấu nguồn."""
+    payout = cash_payout_ratio(
+        company.historical_is, company.historical_cf,
+        float(assumptions["payout_cap"]), int(assumptions["payout_years"]),
+    )
+    if payout is not None:
+        assumptions["payout_ratio"] = payout
+    assumptions["payout_from_data"] = payout is not None
+    return assumptions
+
+
+def payout_flags(
+    label: str, assumptions: dict[str, Any], payout: float, terminal_roe: float, g: float
+) -> list[str]:
+    """Cờ payout chung cho CK/BH: dự phòng cấu hình khi thiếu dữ liệu + nhất quán Gordon."""
+    out = gordon_payout_flags(label, payout, terminal_roe, g)
+    if assumptions.get("payout_from_data") is False:
+        out.append(f"{label}_PAYOUT_FALLBACK: thiếu cổ tức/LNST năm đầy đủ → payout cấu hình {payout:.0%}")
     return out
 
 
@@ -106,7 +155,7 @@ class SecuritiesValuationModel(BaseValuationModel):
             "long_term_growth": a.terminal_growth_rate,
             **cfg,
         }
-        return cls(company.ticker, cf, assumptions)
+        return cls(company.ticker, cf, apply_data_payout(assumptions, company))
 
     # ------------------------------------------------------------------
     def forecast_drivers(self) -> Dict[str, Any]:
@@ -136,7 +185,11 @@ class SecuritiesValuationModel(BaseValuationModel):
             return {"forecasts": [], "terminal_roe": None, "flags": ["NO_ROE_DATA"]}
 
         roe_now = statistics.median(roes[-n_recent:]) if len(roes) >= 1 else roes[-1]
-        roe_mid = statistics.median(roes)  # mid-cycle của CHÍNH công ty này
+        from valuation.config import load_defaults
+
+        # D61: mid-cycle trên N năm gần nhất — VPX từng lấy cả giai đoạn công ty vỏ trước tăng vốn.
+        _win = int((load_defaults().get("forecast") or {}).get("margin_window_years", 4))
+        roe_mid = statistics.median(roes[-_win:])  # mid-cycle của CHÍNH công ty này
 
         floor = float(self.assumptions.get("terminal_roe_floor", 0.05))
         cap = float(self.assumptions.get("terminal_roe_cap", 0.20))
@@ -147,7 +200,8 @@ class SecuritiesValuationModel(BaseValuationModel):
                 f"SEC_TERMINAL_ROE_CLAMPED: mid-cycle {roe_mid:.1%} -> {terminal_roe:.1%}"
             )
 
-        # Fade tuyến tính roe_now -> terminal_roe trong deploy_yrs năm, sau đó giữ.
+        # Fade tuyến tính roe_now -> terminal_roe trong deploy_yrs năm, sau đó giữ. ROE lịch sử đo trên VCSH
+        # BÌNH QUÂN (roe_path_from_history) → LN giải theo VCSH đầu kỳ như NH (forecast_bank.ni_from_avg_roe).
         book = float(self.current_financials.get("total_equity", 0.0))
         forecasts: List[Dict[str, Any]] = []
         for year in range(1, n_years + 1):
@@ -156,12 +210,13 @@ class SecuritiesValuationModel(BaseValuationModel):
                 roe_y = roe_now + (terminal_roe - roe_now) * w
             else:
                 roe_y = terminal_roe
-            ni_y = book * roe_y
+            ni_y = ni_from_avg_roe(roe_y, book, payout)
             forecasts.append({"year": year, "roe": roe_y,
                               "net_income": ni_y, "book_value_start": book})
-            book += ni_y * (1.0 - payout)
+            book += ni_y - max(ni_y, 0.0) * payout  # lỗ không chia cổ tức
 
         return {"forecasts": forecasts, "terminal_roe": terminal_roe,
+                "terminal_roe_begin": begin_roe_from_avg(terminal_roe, self.g),
                 "roe_now": roe_now, "roe_midcycle": roe_mid, "flags": flags}
 
     # ------------------------------------------------------------------
@@ -226,12 +281,15 @@ class SecuritiesValuationModel(BaseValuationModel):
             ri = f["net_income"] - f["book_value_start"] * coe
             pv_ri += ri / ((1.0 + coe) ** f["year"])
 
-        terminal_book = forecasts[-1]["book_value_start"] + forecasts[-1]["net_income"] * (
-            1.0 - float(self.assumptions.get("payout_ratio", 0.20))
-        )
+        payout = float(self.assumptions.get("payout_ratio", 0.20))
+        ni5 = forecasts[-1]["net_income"]
+        terminal_book = forecasts[-1]["book_value_start"] + ni5 - max(ni5, 0.0) * payout
+        # RI terminal / P/B hợp lý cần ROE trên VCSH ĐẦU kỳ (đường mặc định: ROE bình quân × (1 + g/2), như NH);
+        # đường legacy đã tính ROE trên VCSH đầu kỳ.
+        roe_b = drv.get("terminal_roe_begin", terminal_roe)
         ri_fvps = 0.0
         if coe > g:
-            terminal_ri = (terminal_roe - coe) * terminal_book
+            terminal_ri = (roe_b - coe) * terminal_book
             pv_tv = (terminal_ri / (coe - g)) / ((1.0 + coe) ** len(forecasts))
             ri_fvps = (book0 + pv_ri + pv_tv) / shares
         else:
@@ -240,7 +298,7 @@ class SecuritiesValuationModel(BaseValuationModel):
         # --- 2. Chân P/B: ưu tiên P/B THỊ TRƯỜNG lịch sử của chính công ty. P/B hợp lý
         # (ROE−g)/(COE−g) dùng cùng ROE/COE với RI nên không kiểm tra chéo được gì — và
         # khi ROE giữa chu kỳ < COE nó khẳng định mọi CTCK hủy giá trị vĩnh viễn.
-        target_pb = (terminal_roe - g) / (coe - g) if coe > g else 1.0
+        target_pb = (roe_b - g) / (coe - g) if coe > g else 1.0
         hist_pb = self.assumptions.get("historical_pb_median")
         if hist_pb and hist_pb > 0:
             pb_fvps = hist_pb * book0 / shares
@@ -256,15 +314,20 @@ class SecuritiesValuationModel(BaseValuationModel):
         from valuation.engine.guardrails import (
             check_fv_vs_price,
             check_implied_pb,
+            legs_diverge,
             market_pb,
         )
+        if 0.0 < w_ri < 1.0 and legs_diverge(ri_fvps, pb_fvps):
+            # Như DCF: trung bình hai chân bất đồng (DSE RI 2.746 vs P/B 29.589) không phải giá trị hợp lý → chặn.
+            flags.append("VALUATION_LEGS_DIVERGE")
         mkt_pb = market_pb(price, book0, shares)
         flags += check_implied_pb(target_pb, mkt_pb, label="SEC_PB")
         flags += check_fv_vs_price(blended, price)
-        if terminal_roe < coe:
+        flags += payout_flags("SEC", self.assumptions, payout, roe_b, g)
+        if roe_b < coe:
             # Không phải lỗi — nhưng là tuyên bố mạnh, phải nói rõ.
             flags.append(
-                f"SEC_ROE_BELOW_COE: ROE bền vững {terminal_roe:.1%} < COE {coe:.1%} "
+                f"SEC_ROE_BELOW_COE: ROE bền vững {terminal_roe:.1%} (VCSH đầu kỳ {roe_b:.1%}) < COE {coe:.1%} "
                 f"→ P/B hợp lý < 1 (mô hình cho rằng công ty chưa tạo thêm giá trị)"
             )
 

@@ -43,6 +43,8 @@ test_output.txt
 .deepseek_report_cache/
 .vn100_ranking/
 .data_update/
+.daily_report/
+.assistant/
 VN100_Valuation_Results.csv
 compare_table.md
 .streamlit/secrets.toml

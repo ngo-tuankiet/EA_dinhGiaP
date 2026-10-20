@@ -336,6 +336,16 @@ def _growth_issues(
     return out
 
 
+# Tiền tố cờ dữ liệu xếp 'error' (chặn công bố); flag_descriptions phải ghi level 'error' (test r3b).
+DATA_FLAG_ERROR_PREFIXES = (
+    "MISSING_FINANCIAL_INPUT:",
+    "SOURCE_CONFLICT:",
+    "SOURCE_AUDIT_MISSING",
+    "SOURCE_AUDIT_STALE",
+    "STALE_PRICE",  # giá cũ → upside/khuyến nghị vô nghĩa
+)
+
+
 def run_deterministic_checks(
     company: Any,
     *,
@@ -378,17 +388,7 @@ def run_deterministic_checks(
 
     for flag in list(getattr(company, "data_flags", []) or []):
         severity = (
-            "error"
-            if str(flag).startswith(
-                (
-                    "MISSING_FINANCIAL_INPUT:",
-                    "SOURCE_CONFLICT:",
-                    "SOURCE_AUDIT_MISSING",
-                    "SOURCE_AUDIT_STALE",
-                    "STALE_PRICE",  # giá cũ → upside/khuyến nghị vô nghĩa
-                )
-            )
-            else "warning"
+            "error" if str(flag).startswith(DATA_FLAG_ERROR_PREFIXES) else "warning"
         )
         issues.append(_issue(str(flag), severity, f"Cờ chất lượng dữ liệu: {flag}."))
     for warning in list(getattr(company, "warnings", []) or []):

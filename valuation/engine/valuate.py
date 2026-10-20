@@ -13,6 +13,8 @@ Lưu ý: run_valuation_engine (dùng cho ma trận độ nhạy/scenario của U
 sửa để delegate non-fin sang _dispatch_nonfin → mọi đường ra cùng một con số.
 """
 from __future__ import annotations
+
+import re
 from typing import Any, Dict, Union
 
 from valuation.models.financials import Company
@@ -26,21 +28,38 @@ from valuation.models.macro_env import MacroEnvironment
 def _review_flags(upside_pct: float) -> list:
     """Cờ review khi upside cực đoan — buộc analyst rà lại giả định thay vì tin mù.
 
-    upside_pct: upside tính theo % (vd 302.8 = +302.8%). Ngưỡng đặt rộng để chỉ
-    bắt trường hợp thực sự bất thường (giá hợp lý > 2.5× hoặc < 0.4× thị giá).
+    upside_pct: upside tính theo % (vd 302.8 = +302.8%). Ngưỡng (config publication_gate)
+    đặt rộng để chỉ bắt trường hợp thực sự bất thường (giá hợp lý > 2.5× hoặc < 0.4× thị giá).
     """
     if upside_pct is None:
         return []
-    if upside_pct > 150.0:
+    from valuation.config import load_defaults
+
+    gate = load_defaults()["publication_gate"]
+    if upside_pct > float(gate["upside_extreme_review_pct"]):
         return ["UPSIDE_EXTREME_REVIEW"]
-    if upside_pct < -60.0:
+    if upside_pct < float(gate["downside_extreme_review_pct"]):
         return ["DOWNSIDE_EXTREME_REVIEW"]
     return []
 
 
+_FLAG_CODE = re.compile(r"[A-Z][A-Z0-9_]+")
+
+
 def _warning_codes(company) -> list:
-    """Cảnh báo mô hình (vd BANK_PB_CLAMPED_LOW: ...) → mã cờ để ra được output."""
-    return [str(w).split(":", 1)[0].strip() for w in (getattr(company, "warnings", None) or [])]
+    """Chỉ lấy mã UPPER_SNAKE trước ':' (vd BANK_PB_CLAMPED_LOW). Cảnh báo văn bản tự do ("Năm 2018: ...")
+    không thành mã cờ rác nhưng vẫn nằm trong company.warnings để hiển thị."""
+    prefixes = (str(w).split(":", 1)[0].strip() for w in (getattr(company, "warnings", None) or []))
+    return [p for p in prefixes if _FLAG_CODE.fullmatch(p)]
+
+
+# Mã cờ (trước ':') chặn công bố; flag_descriptions phải ghi level 'error' cho mọi mã ở đây (test r3b).
+PUBLICATION_BLOCKING_FLAGS = frozenset({
+    "VALUATION_PROXY", "NOT_RATED", "PROXY_IMPLAUSIBLE", "VALUATION_LEGS_DIVERGE",
+    "CIP_DOMINATES_VALUE", "UPSIDE_EXTREME_REVIEW", "DOWNSIDE_EXTREME_REVIEW",
+    "MATERIAL_EVENT_HOLD", "SOTP_HOLDINGS_UNVERIFIED", "SOTP_HOLDINGS_STALE",
+    "SOTP_SUBSIDIARY_DATA_ERROR", "LAND_BANK_INPUT_MISSING", "AI_INPUTS_UNVERIFIED",
+})
 
 
 def _apply_publication_gate(company, result: Dict[str, Any]) -> Dict[str, Any]:
@@ -64,9 +83,10 @@ def _apply_publication_gate(company, result: Dict[str, Any]) -> Dict[str, Any]:
     if active_event_hold(company.ticker, date.today()):
         flags.add("MATERIAL_EVENT_HOLD")
     # Kết quả cực đoan phải được rà soát trước khi phát hành (số chẩn đoán vẫn giữ lại).
+    # So theo mã cờ trước ':' — cờ mang chi tiết (vd SOTP_SUBSIDIARY_DATA_ERROR:GEL(...)) vẫn chặn.
+    codes = {str(f).split(":", 1)[0].strip() for f in flags}
     blocked = any(c["severity"] == "error" for c in checks) or bool(
-        flags & {"VALUATION_PROXY", "NOT_RATED", "PROXY_IMPLAUSIBLE",
-                 "UPSIDE_EXTREME_REVIEW", "DOWNSIDE_EXTREME_REVIEW", "MATERIAL_EVENT_HOLD"}
+        codes & PUBLICATION_BLOCKING_FLAGS
     ) or result.get("not_rated", False) or ai_unverified
     result["data_checks"] = checks
     result["publication_allowed"] = not blocked
@@ -111,6 +131,24 @@ def valuate(company: Union[Company, CompanyBank], projections=None, macro_env: M
         except ValueError:
             # Chân RI/P/B âm: không pha âm thầm (trước đây kẹp về 0 → FV mất nửa).
             blended_fv, leg_flags = 0.0, ["BANK_NEGATIVE_VALUATION_LEG"]
+        from valuation.engine.guardrails import legs_diverge
+
+        # Cùng cổng với DCF/CK/BH: hai chân RI và P/B vênh quá ngưỡng thì trung bình không phải giá trị hợp lý.
+        diverge = (
+            ["VALUATION_LEGS_DIVERGE"]
+            if not leg_flags and 0.0 < weight_intrinsic < 1.0 and legs_diverge(intrinsic_fv, relative_fv)
+            else []
+        )
+        from valuation.config import load_defaults
+        from valuation.engine.forecast_bank import fade_plug_share
+
+        # LN năm 5 phần lớn do dòng cân phai ROE (không theo driver) → nói rõ, không chặn công bố.
+        plug = fade_plug_share(projections, company.assumptions.tax_rate)
+        plug_flags = (
+            [f"BANK_ROE_FADE_PLUG:{plug:.0%}"]
+            if plug is not None and abs(plug) >= float(load_defaults()["bank_terminal"]["fade_plug_flag_share"])
+            else []
+        )
 
         decision = recommend(
             company.ticker, company.current_price, blended_fv,
@@ -126,7 +164,7 @@ def valuate(company: Union[Company, CompanyBank], projections=None, macro_env: M
             "upside": decision["upside"],
             "recommendation": decision["recommendation"],
             "projections": projections,
-            "flags": leg_flags + _review_flags(decision["upside"]) + _warning_codes(company)
+            "flags": leg_flags + diverge + plug_flags + _review_flags(decision["upside"]) + _warning_codes(company)
                      + list(getattr(company, "data_flags", []) or []),
             "decision": decision
         })

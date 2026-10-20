@@ -88,3 +88,8 @@ git diff --cached --name-only
 - Discord: chỉ dùng webhook gửi thông báo, không dùng bot token nếu không cần.
 - DB ghi: tách read-only và write account nếu sau này chuyển sang PostgreSQL.
 - Không tự nhập mật khẩu, giải CAPTCHA, tạo tài khoản hoặc vượt rào truy cập.
+- Mã chứng khoán từ ngoài (D66): route `/ingest` chỉ nhận `^[A-Z0-9]{3}$` thuộc VN100 ∪ công ty con trong
+  `config/sotp_holdings.yaml` (mã lạ → 422 trước khi chạm DB/API); `universe.audit_universe` kiểm cùng regex
+  trước khi mã đi vào lời gọi API và đường dẫn cache. `run_ingest()` mặc định `is_vn100=False` để mã mới không
+  tự vào rổ VN100.
+- Không tải tài liệu khi chứng chỉ TLS lỗi (không tắt kiểm tra chứng chỉ để lấy cho được).

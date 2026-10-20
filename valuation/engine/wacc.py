@@ -50,3 +50,48 @@ def compute_wacc(
     if floor is not None:
         wacc = max(wacc, floor)
     return wacc
+
+
+def marginal_tax_rate(terminal_tax_rate: float | None, tax_rate: float) -> float:
+    """Thuế dài hạn — NGUỒN DUY NHẤT cho NOPAT terminal (dcf.forecast_drivers) và lá chắn thuế nợ trong WACC:
+    thuế terminal người dùng nhập nếu có; không thì sector_tax_rates.default khi dcf.terminal_tax_mode =
+    marginal (Damodaran: ưu đãi có thời hạn không kéo dài vĩnh viễn), còn lại ('effective', mã có ưu đãi dài
+    hạn theo luật) là thuế hiệu dụng tax_rate."""
+    from valuation.config import load_defaults
+
+    if terminal_tax_rate is not None:
+        return float(terminal_tax_rate)
+    cfg = load_defaults()
+    if cfg["dcf"]["terminal_tax_mode"] == "marginal":
+        return float(cfg["sector_tax_rates"]["default"])
+    return float(tax_rate)
+
+
+def wacc_tax_rate(assumptions) -> float:
+    """Thuế cho lá chắn thuế nợ, theo dcf.wacc_tax_mode: 'marginal' (Damodaran: Rd·(1 − thuế BIÊN) vì lãi vay
+    giảm thuế ở mức biên — cùng thuế với NOPAT terminal) | 'effective' (thuế hiệu dụng, cách cũ để quay lui)."""
+    from valuation.config import load_defaults
+
+    mode = load_defaults()["dcf"]["wacc_tax_mode"]
+    if mode == "marginal":
+        return marginal_tax_rate(getattr(assumptions, "terminal_tax_rate", None), assumptions.tax_rate)
+    if mode == "effective":
+        return assumptions.tax_rate
+    raise ValueError(f"dcf.wacc_tax_mode không hợp lệ: {mode!r} (marginal|effective)")
+
+
+def company_wacc(company) -> float:
+    """WACC hiện hành của Company (Damodaran, trọng số thị trường): E = vốn hóa (thiếu giá → VCSH sổ sách gồm
+    CĐKKS), D = nợ vay kỳ cuối, Rd = cost_of_debt hoặc rf + spread, thuế = wacc_tax_rate, sàn rf + spread;
+    wacc_override thắng. Dùng chung DCF (FCFF), RNAV (dòng tiền dự án chưa trừ nợ) và báo cáo."""
+    a = company.assumptions
+    if a.wacc_override is not None:
+        return a.wacc_override
+    bs = company.historical_bs[-1]
+    rf = a.risk_free_rate
+    coe = a.cost_of_equity or (rf + a.beta * a.erp)
+    cod = a.cost_of_debt if a.cost_of_debt is not None else cost_of_debt_from_rf(rf)
+    mcap = company.shares_outstanding * 1e6 * company.current_price
+    equity = mcap if mcap > 0 else bs.total_equity * 1e9
+    debt = (bs.short_term_debt + bs.long_term_debt) * 1e9
+    return compute_wacc(coe, cod, equity, debt, wacc_tax_rate(a), floor=rf + DEFAULT_DEBT_SPREAD)

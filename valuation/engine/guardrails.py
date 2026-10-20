@@ -30,6 +30,20 @@ def _cfg() -> dict:
     return {**_DEFAULTS, **(load_defaults().get("guardrails") or {})}
 
 
+def legs_diverge(leg_a: float, leg_b: float) -> bool:
+    """Hai chân định giá được pha (cả hai trọng số > 0) vênh nhau: một chân ≤ 0 còn chân kia dương, hoặc
+    max/min > publication_gate.leg_ratio_review — trung bình hai con số bất đồng không phải giá trị hợp lý.
+    Dùng chung DCF/bội số, RI/P/B (CK, BH, NH). Cả hai chân ≤ 0 → False (đã có cờ chân âm riêng)."""
+    cfg = load_defaults()
+    gate, dcf = cfg.get("publication_gate") or {}, cfg.get("dcf") or {}
+    # Tương thích ngược: khóa cũ dcf.leg_ratio_review (trước fx2 chỉ DCF có cổng này); thiếu cả hai → KeyError.
+    ratio = float(gate["leg_ratio_review"] if "leg_ratio_review" in gate else dcf["leg_ratio_review"])
+    lo, hi = sorted((leg_a, leg_b))
+    if hi <= 0:
+        return False
+    return lo <= 0 or hi / lo > ratio
+
+
 def check_fv_vs_price(fv: Optional[float], price: Optional[float]) -> List[str]:
     """So giá trị hợp lý với thị giá — phép thử ĐỘC LẬP với đồng thuận CTCK.
 

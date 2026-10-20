@@ -12,3 +12,165 @@ holds:
       Báo chí tổng hợp 30/09/2026 (vietstock, cafef, thanhnien, dnse) — chưa đối chiếu tài liệu
       ĐHĐCĐ bất thường gốc.
     lift_when: Có BCTC phản ánh dự phòng và số cp sau phát hành; giá mục tiêu CTCK lập sau biến cố.
+  HHV:
+    since: "2026-10-14"
+    reason: >-
+      Lỗi mô hình, không phải sự kiện doanh nghiệp (D61): chân EV/EBITDA dùng trung vị 2022-25 = 17,8x —
+      giai đoạn ramp-up BOT (nợ đủ, EBITDA còn thấp) — áp lên EBITDA đã trưởng thành; thị trường hiện
+      ~10,5x. Kết quả +148% bị phóng đại; ước lượng với bội số hiện hành 9.800–13.300đ.
+    source: >-
+      Rà soát nội bộ 14/10/2026; đồng thuận CTCK trung vị 13.850đ (6 báo cáo 180 ngày: FPTS, SSV, BSC, ACBS).
+    lift_when: Sửa nhánh bội số (lỗi C — bội số hiện hành/ngành) hoặc DCF BOT hữu hạn theo thời hạn thu phí.
+  NAB:
+    since: "2026-10-19"
+    reason: >-
+      Lỗi mô hình/dữ liệu, không phải sự kiện doanh nghiệp. Sau khi sửa dấu hoàn nhập dự phòng
+      (hết BANK_PBT_MISMATCH 2018-2019) và số dư bình quân NIM TTM, mô hình ra ~19.620đ ≈ +63% so
+      với thị giá 12.000đ (19/10/2026), n=0 CTCK để đối chiếu. Chân RI (payout 0%, tăng tín dụng ~13,8%, ROE ~18%) cao hơn hẳn chân P/B; bảng cân
+      đối 2025 phình ~4 lần ở mảng liên ngân hàng khớp hai đầu (tiền gửi/cho vay TCTD 37k → 155k tỷ,
+      vay TCTD 38k → 154k tỷ) nên VCSH/tổng tài sản không đại diện được ràng buộc vốn.
+    source: >-
+      Chẩn đoán nội bộ 19/10/2026 (nhóm Ngân hàng F1, Dữ liệu F4; phản biện C2) trên DB
+      vn100_full.db; số dư liên ngân hàng từ BCTC hợp nhất NAB 2025 trong DB.
+    lift_when: >-
+      Có RWA/CAR Basel II có nguồn để kiểm ràng buộc vốn, hoặc analyst rà xong sổ liên ngân hàng và
+      chân RI; tốt nhất có ít nhất 1 giá mục tiêu CTCK để đối chiếu.
+  BVH:
+    since: "2026-10-19"
+    reason: >-
+      Lỗi mô hình bảo hiểm, không phải sự kiện doanh nghiệp. Mô hình P/B cho DN bảo hiểm nhân thọ
+      thiếu Embedded Value (giá trị hợp đồng hiện hữu): FV ~30.080đ ≈ −57,5% thị giá, P/B mục tiêu
+      0,86x so với thị trường 2,02x. Khi SOURCE_CONFLICT được hạ mức (F2c, ΔFV = 0) mã sẽ tự mở
+      công bố với con số này.
+    source: >-
+      Chẩn đoán nội bộ 19/10/2026 (nhóm Dữ liệu F2c, CK F9; phản biện C18) trên DB vn100_full.db.
+    lift_when: >-
+      Có mô hình bảo hiểm nhân thọ dùng Embedded Value/VNB có nguồn (BCTC, báo cáo EV) hoặc analyst
+      duyệt phương pháp thay thế cho BVH.
+  VRE:
+    since: "2026-10-19"
+    reason: >-
+      Lỗi cầu nối định giá, không phải sự kiện doanh nghiệp. 25.468 tỷ "các tài sản dài hạn khác"
+      (other_long_term_assets__cac_tai_san_dai_han_khac) chưa phân loại (đặt cọc/phải thu bên liên
+      quan?) nên không nằm trong cầu nối vốn chủ; FV hiện ~8.900đ ≈ −61%, sau gói sửa DCF sẽ ở
+      khoảng −58% và có thể vượt qua ngưỡng chặn cực đoan.
+    source: >-
+      Chẩn đoán nội bộ 19/10/2026 (nhóm DCF-thấp F4; phản biện C13) trên DB vn100_full.db; chưa có
+      thuyết minh BCTC phân loại khoản này.
+    lift_when: >-
+      Có thuyết minh BCTC xác định bản chất khoản 25.468 tỷ và đã đưa vào cầu nối (loại phần XDCB
+      dở dang 231 tỷ để không đếm trùng).
+  POW:
+    since: "2026-10-19"
+    reason: >-
+      Lỗi mô hình (lệch thời điểm XDCB → TSCĐ), không phải sự kiện doanh nghiệp. XDCB dở dang 24.628 tỷ
+      (Q3/2025) chuyển sang TSCĐ hữu hình ở Q4/2025 (22.276 → 45.737 tỷ; nhà máy mới, nhiều khả năng
+      Nhơn Trạch 3&4 — chưa đối chiếu thuyết minh). Doanh thu quý 7.855 tỷ (Q3/2025) → 20.308 tỷ
+      (Q2/2026): kỳ TTM 49.392 tỷ mới gồm một phần công suất mới (Q2/2026 × 4 ≈ 81.200 tỷ). Gói CIP
+      nhất quán (bước s4) loại CIP từng năm khỏi EV lịch sử → bội số EV hoạt động 7,57x → 5,30x áp lên
+      EBITDA TTM chưa đủ năm; chân DCF cũng dựng từ doanh thu TTM. FV 13.813 → 10.345đ (−39,9% so CTCK
+      17.200đ, n=10) và hết cờ VALUATION_LEGS_DIVERGE nên sẽ tự mở công bố với con số thiên thấp.
+    source: >-
+      Đo nội bộ 19/10/2026 (bước s4, harness 100 mã trên snapshot vn100_full.db); số dư XDCB/TSCĐ và
+      doanh thu quý lấy từ financials_quarterly hợp nhất của POW.
+    lift_when: >-
+      Kỳ TTM gồm đủ 4 quý vận hành thương mại của nhà máy mới (BCTC Q4/2026 trở đi), hoặc có dự phóng
+      doanh thu/EBITDA theo công suất có nguồn cho giai đoạn ramp-up.
+  SIP:
+    since: "2026-10-20"
+    reason: >-
+      Lỗi mô hình chưa giải quyết hết, không phải sự kiện doanh nghiệp. Bước s5 chuyển SIP từ proxy RNAV
+      sang DCF (FCFF) + EV/EBITDA và đưa Δdoanh thu chưa thực hiện vào vốn lưu động (tỷ lệ biên ΔDR/ΔDT
+      0,98, cửa sổ 4 năm; DR 14.023 tỷ ≈ 2,9× VCSH mẹ). Giai đoạn dự phóng đã theo dòng tiền, nhưng giá trị
+      cuối kỳ (≈ 59% EV DCF) vẫn coi phần phân bổ tiền thuê trả trước là tiền mặt vĩnh viễn — chỉ đúng khi
+      quỹ đất còn cho thuê bổ sung (phản biện: đếm trùng nếu quỹ đất cạn). FV 89.777đ: +24,9% so với CTCK
+      (71.900đ, n=7), +85% so với thị giá 48.600đ; chân DCF 103.339đ (tiền + HTM ngắn hạn 12.351 tỷ ≈
+      51.000đ/cp, XDCB dở dang 2.315 tỷ ≈ 9.560đ/cp) so với chân EV/EBITDA 76.214đ.
+    source: >-
+      Đo nội bộ 20/10/2026 (bước s5, harness trên snapshot vn100_full.db; chẩn đoán RNAV F1, phản biện mục
+      "missing" SIP); số dư doanh thu chưa thực hiện từ financials_quarterly hợp nhất của SIP.
+    lift_when: >-
+      Có lịch quỹ đất thương phẩm/hấp thụ theo KCN có nguồn (chẩn đoán RNAV F6) để giới hạn dòng tiền trả
+      trước ở giá trị cuối kỳ, hoặc người dùng duyệt giả định ΔDR + giá trị cuối kỳ hiện tại.
+  # fx3 (20/10/2026): mã MỚI mở công bố trong đợt nâng cấp 10/2026 mà lệch > 30% đồng thuận CTCK, hoặc
+  # upside > 100%, với mục registry must_fix do agent viết (owner "claude-de-xuat (cho phi duyet)"), chưa được
+  # người dùng duyệt. [fin_a] Ngưỡng nay thống nhất ở defaults.yaml publication_gate.new_listing_hold_* (lệch
+  # > 40% với n ≥ 3, hoặc upside > 100%); VCG (+41,5%) và PC1 (+33,0%, đặt theo mức 30% cũ) giữ nguyên tới khi
+  # người dùng duyệt. Số đo: harness 100 mã trên snapshot vn100_full.db (scratchpad fx3), sau fx1 + fx2.
+  VCG:
+    since: "2026-10-20"
+    reason: >-
+      Lỗi/giả định mô hình chưa duyệt, không phải sự kiện doanh nghiệp. s5 chuyển VCG từ SOTP sang DCF (FCFF)
+      trọng số 1,0 — không còn chân bội số đối chiếu nên cổng VALUATION_LEGS_DIVERGE không thể bắn. FV 27.301đ:
+      +41,5% so với đồng thuận CTCK 19.300đ (n=4), upside +81,4% so với thị giá 15.050đ (20/10); mốc 28/09
+      +42,9% CTCK, upside +101,2%. Nguồn lệch đã tách (calibration_registry VCG): biên EBIT trung vị 4 năm
+      8,9% so TTM 6,8% (dùng biên TTM → 21.756đ), tiền + ĐTNH 9.446 tỷ cộng nguyên (+13.529đ/cp), XDCB cộng sổ.
+    source: >-
+      Đo nội bộ 20/10/2026 (fx3, harness trên snapshot vn100_full.db); đồng thuận từ bảng consensus trong DB;
+      phân rã ở upgrade_notes/s5_sotp.md#F4.
+    lift_when: >-
+      Người dùng duyệt phương pháp DCF trọng số 1,0 + mục registry VCG (hoặc thêm chân bội số đối chiếu), hoặc
+      mô hình sửa biên chuẩn hóa/cầu nối tiền mặt và vào band ±20% CTCK.
+  PC1:
+    since: "2026-10-20"
+    reason: >-
+      Giả định mô hình chưa duyệt, không phải sự kiện doanh nghiệp. s5 chuyển PC1 từ SOTP sang EV/EBITDA trọng
+      số 1,0 (mở công bố mới); fx2 áp bội số trailing lên EBITDA TTM 2.942 tỷ. FV 33.108đ: +33,0% so với đồng
+      thuận CTCK 24.900đ (n=4), upside +78,5% so với thị giá 18.550đ (20/10); mốc 28/09 +31,9% (n=3). Lệch là
+      cược bội số quay về trung vị lịch sử của chính mã 6,65x so với 4,62x thị trường đang trả.
+    source: >-
+      Đo nội bộ 20/10/2026 (fx3, harness trên snapshot vn100_full.db); upgrade_notes/s5_sotp.md#F4,
+      upgrade_notes/fx2_models.md mục 4; calibration_registry PC1.
+    lift_when: >-
+      Người dùng duyệt bội số mục tiêu (lịch sử 6,65x hay hiện hành/ngành) và mục registry PC1, hoặc mô hình vào
+      band ±20% CTCK.
+  # TPB: ĐÃ GỠ 20/10/2026 (r4a). Hold đặt vì upside +106,9% dưới λ = 1. Phi quyết λ = 0,5 (Q1): FV 24.730 →
+  # 20.763đ, upside +73,7% (thị giá 11.950đ) / +70,0% (28/09, 12.260đ) < 100%; lệch CTCK +11,6% (18.600đ, n=3) /
+  # +12,0% (28/09, n=2) ≤ 40% — đạt điều kiện gỡ. Số đo: harness 100 mã trên snapshot vn100_full.db (scratchpad r4a).
+  # r4a (20/10/2026): mã MỞ LẠI do phi nâng publication_gate.leg_ratio_review 3,0 → 5,0 (Q2) mà lệch CTCK > 40%
+  # (n ≥ 3) hoặc upside > 100% → hold tới khi người dùng duyệt.
+  FRT:
+    since: "2026-10-20"
+    reason: >-
+      Giả định mô hình chưa duyệt, không phải sự kiện doanh nghiệp. Bị chặn VALUATION_LEGS_DIVERGE (chân DCF
+      38.224đ vs chân P/E 132.130đ = 3,46x) tới khi ngưỡng hai chân nâng lên 5,0 (r4a) thì tự mở công bố: FV
+      85.177đ (trung bình 50/50 hai chân vênh nhau), −49,9% so với đồng thuận
+      CTCK 170.000đ (n=13), −41,7% so với thị giá 146.000đ (20/10); mốc 28/09 −49,7% (n=13). Nguồn lệch đã
+      ghi ở calibration_registry FRT (D62): chuẩn hoá LN/biên theo trung vị lịch sử khi DN đang tăng trưởng cấu
+      trúc (Long Châu) — LN 318 → 795 → 1.137 tỷ nhưng P/E áp trung vị 3 năm, biên 4 năm 2,1% gồm năm lỗ 2023.
+    source: >-
+      Đo nội bộ 20/10/2026 (r4a, harness 100 mã trên snapshot vn100_full.db); đồng thuận từ bảng consensus trong
+      DB; calibration_registry FRT; upgrade_notes/r4a_decisions_models.md.
+    lift_when: >-
+      Người dùng duyệt mục registry FRT và ngưỡng hai chân 5,0 cho FRT, hoặc mô hình chuẩn hoá theo pha tăng
+      trưởng và vào band ±20% CTCK.
+  # fin_a (20/10/2026, phản biện vòng 4): hold ĐẶT SẴN cho mã còn bị chặn bởi cờ chờ người dùng
+  # (SOTP_HOLDINGS_UNVERIFIED) — điền reviewed_by trong config/sotp_holdings.yaml là tự mở công bố dù lệch CTCK
+  # vượt publication_gate.new_listing_hold_dev với mục registry chưa duyệt. Không đổi gì khi mã còn bị chặn;
+  # tự thực thi luật §13 (docs/AGENT_OPERATING_MANUAL.md) lúc mở. Số đo: r4b/r4c, snapshot vn100_full.db.
+  REE:
+    since: "2026-10-20"
+    reason: >-
+      Mã sẽ MỚI mở công bố khi người dùng duyệt sotp_holdings (hết SOTP_HOLDINGS_UNVERIFIED) với FV SOTP_HOLDINGS
+      36.679đ: −40,5% so với đồng thuận CTCK 61.600đ (n=10, cả hai mốc 28/09 và 20/10), vượt ngưỡng hold mã mới mở.
+      Mục calibration_registry REE (out_of_band_must_fix, owner "claude-de-xuat (cho phi duyet)") chưa được duyệt:
+      phần chưa niêm yết (thủy điện/nước, CHP/PPC, BĐS E.Town, M&E) giữ theo sổ sách.
+    source: >-
+      Đo nội bộ 20/10/2026 (r4b mô phỏng điền reviewed_by, r4c harness 100 mã trên snapshot vn100_full.db);
+      calibration_registry REE; upgrade_notes/r4b_sotp_audit.md, upgrade_notes/sotp_review_table.md.
+    lift_when: >-
+      Người dùng duyệt mục registry REE (đổi owner/trạng thái) cùng tỷ lệ sở hữu trong sotp_holdings, hoặc mô hình
+      định giá phần chưa niêm yết và vào band SOTP ±35% CTCK.
+  TCH:
+    since: "2026-10-20"
+    reason: >-
+      Mã sẽ MỚI mở công bố khi người dùng duyệt sotp_holdings (hết SOTP_HOLDINGS_UNVERIFIED) với FV SOTP_HOLDINGS
+      7.727đ: −59,0% so với đồng thuận CTCK 18.850đ (n=2, 20/10) / −63,0% (n=3, 28/09), vượt ngưỡng hold mã mới
+      mở. Mục calibration_registry TCH (out_of_band_must_fix) có thesis số đo viết lại cho phương pháp mới ở r4b,
+      chưa được người dùng duyệt: dự án BĐS Hoàng Huy giữ theo sổ sách, HHS P/B 0,43 làm phần định giá lại âm.
+    source: >-
+      Đo nội bộ 20/10/2026 (r4b mô phỏng điền reviewed_by, r4c harness 100 mã trên snapshot vn100_full.db);
+      calibration_registry TCH; upgrade_notes/r4b_sotp_audit.md, upgrade_notes/sotp_review_table.md.
+    lift_when: >-
+      Người dùng duyệt mục registry TCH (thesis r4b) cùng tỷ lệ sở hữu HHS trong sotp_holdings, hoặc mô hình định
+      giá quỹ dự án (RNAV) và vào band SOTP ±35% CTCK.

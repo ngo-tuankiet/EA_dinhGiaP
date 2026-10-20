@@ -16,7 +16,7 @@ from valuation.config import PROJECT_ROOT, settings
 from valuation.db.models import PricesDaily
 from valuation.db.session import SessionLocalRead
 from valuation.ingest.sponsor_data import collect_sponsor_dataset
-from valuation.ingest.universe import load_vn100_snapshot
+from valuation.ingest.universe import select_audit_tickers
 from valuation.services.ranking_store import read_json, write_json
 
 
@@ -26,10 +26,11 @@ def main() -> None:
     parser.add_argument("--financials", action="store_true")
     parser.add_argument("--workers", type=int, default=1, choices=(1, 2, 3))
     args = parser.parse_args()
-    allowed = load_vn100_snapshot()["symbols"]
-    tickers = args.tickers or allowed
-    if set(tickers) - set(allowed):
-        parser.error("Mã ngoài VN100")
+    # VN100 ∪ công ty con SOTP (r4b, phi cho phép Q3): cache nguồn công ty con để audit được mã mẹ.
+    try:
+        tickers = select_audit_tickers(args.tickers)
+    except ValueError as exc:
+        parser.error(str(exc))
     root = PROJECT_ROOT / ".vn100_ranking/sponsor"
     now = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh"))
     previous = read_json(root / "collection_status.json", {})

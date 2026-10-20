@@ -1730,3 +1730,145 @@ RI/DCF đầy đủ của Shinhan không so trực tiếp: kỳ đầu 6 tháng 
   mỗi lần dựng; ảnh lỗi/không bật thì báo cáo không có ảnh thay vì ảnh sai.
 - Phát hiện, chưa sửa: nút "Tải xuống báo cáo PDF" trả về trang giả 1 dòng (không có WeasyPrint/Playwright);
   Word + HTML đầy đủ. Cần thêm dependency → chờ duyệt.
+
+### D60 — Xuất PDF báo cáo bằng Playwright (2026-10-14, người dùng yêu cầu cài)
+- Trước đây nút PDF trả về trang giả 1 dòng (không có WeasyPrint/Playwright). Cài `playwright==1.64.0`; `build_pdf`
+  thử Chromium của Playwright, chưa cài thì dùng Google Chrome của máy (`channel="chrome"`) — Mac không phải tải thêm.
+  HPG: 6 trang, tiếng Việt đúng dấu. VPS: `playwright install --with-deps chromium`.
+- Dựng PDF ~3,7 giây → chỉ khi bấm « Tạo báo cáo PDF »; lưu kèm SHA-256 của HTML, đổi giả định thì ẩn nút tải
+  (không phát bản cũ).
+
+### D61 — Biên lợi nhuận theo cửa sổ gần đây + chặn nhánh DCF âm (2026-10-15, người dùng duyệt « A+D »)
+- **A:** trung vị biên EBIT / EBITDA mid-cycle / ROE CTCK lấy `forecast.margin_window_years: 4` năm gần nhất thay vì
+  cả 9 năm (9 năm trộn các gãy cấu trúc: BMP biên 2023+ gấp đôi, VPX/PVD thời lỗ). Trung vị ≤ 0 nhưng năm cuối
+  dương → dùng năm cuối. `bank_terminal.credit_cost_spike_multiple` 2,0 → 1,5 (EIB lọt).
+- **D:** nhánh DCF âm không pha vào trung bình với bội số → `NEGATIVE_DCF_LEG`, FV = 0, NOT_RATED (BAF, CII, NKG, HSG).
+- Đo trên cùng DB (chỉ đổi cấu hình D61): 47/100 mã đổi FV; công bố đổi 2 mã (EIB mở 11.082, HSG chặn).
+  So CTCK: gần hơn BMP −35→+2%, GAS +25→−1%, DCM +21→−10%, HT1 +29→+8%; xa hơn HPG −13→−28%, POW +1→−16%,
+  PVT +2→+12%. Độ nhạy cửa sổ 3/4/5/6/9 năm: trung vị |lệch| 29–31% (nhiễu) → giữ 4, không dò theo CTCK.
+- HPG: cửa sổ rơi vào đáy chu kỳ thép (11,8% vs 13,1–13,5% hai năm gần nhất) — giới hạn mid-cycle theo cửa sổ với
+  ngành chu kỳ, ghi must_fix. PVD có giá lần đầu, lệch −26% chưa rõ nguyên nhân → must_fix. HHV +148% lọt ngưỡng
+  150% → event hold (bội số BOT thời ramp-up). Chưa duyệt: B (capex), C (bội số), các lỗi dữ liệu nhỏ.
+- Lưu ý vận hành: 46 mã giá dừng 09/10 → cờ STALE_PRICE chặn công bố (không do D61), cần chạy cập nhật giá.
+
+### D62 — Lỗi dữ liệu nhỏ, ROIC terminal, bội số TTM + trung vị ngành (2026-10-15, người dùng duyệt « làm tất cả »)
+- **Dữ liệu/code:** bỏ năm sơ khai không có LCTT thay vì điền 0 (`INCOMPLETE_YEAR_DROPPED`, chỉ BAF 2018);
+  trái phiếu chuyển đổi (phần nợ) cộng vào nợ dài hạn — BAF 513, CII 3.257, SBT 976 tỷ; phần quyền chọn là vốn
+  chủ, không cộng. `weight_dcf` lấy theo routing.json thay vì cố định 0,5 (VRE 1,0 → FV 16.193 → 8.906; BWE 1,0;
+  VPL 0,6; CII 1,0). Cảnh báo văn bản tự do không còn thành mã cờ rác ("Năm 2018"), văn bản vẫn hiển thị.
+- **B:** TV đã đúng Damodaran (tái đầu tư = g/ROIC, mặc định ROIC = WACC theo D49). Sửa: `roic_terminal` người
+  dùng nhập bị bỏ qua; ROIC ≤ g báo lỗi `INVALID_ROIC_TERMINAL` thay vì kẹp im lặng. **Chưa làm:** cộng XDCB dở
+  dang theo giá sổ vào cầu nối vốn chủ (NKG −5.971 → ~4.837, HSG, HPG +16%) — bộ phân loại an toàn chặn sửa đổi
+  làm tăng FV, chờ người dùng xác nhận riêng. Không nới trần doanh thu/vốn (5,0) — ngoài phạm vi duyệt.
+- **C:** kỳ TTM ghép giá cuối quý → được tính vào ≥3 quan sát bội số lịch sử; thiếu lịch sử → trung vị bội số
+  HIỆN HÀNH nhóm routing.json (`peer_multiples.min_peers: 3`, cờ `MULTIPLE_FROM_PEER_MEDIAN`), hằng số ngành chỉ
+  còn là phương án cuối. Không kẹp bội số theo ngành: nhóm routing còn lẫn mô hình (HHV BOT chung nhà thầu → −49%).
+- Kết quả (giá cập nhật tới 15/10): công bố 58/100; trung vị |lệch CTCK| 25,7% (n=60, ≥3 CTCK). Đổi lớn: FRT
+  34.878 → 58.738 (có giá, ghi must_fix: chuẩn hoá LN trên pha tăng trưởng Long Châu, −65% vs CTCK), MCH +27%,
+  CTD −22% (+61% → +26% vs CTCK), BSR −26%, VTP +22%, HHV −20% (vẫn hold).
+
+### D63 — Nghiên cứu chu kỳ ngành thép & HPG (2026-10-18, người dùng duyệt nguồn World Bank + FRED)
+- Thêm `www.worldbank.org`, `thedocs.worldbank.org` vào `macro_sources.allowed_domains` (Pink Sheet: quặng sắt,
+  than theo tháng từ 1960). FRED đã có sẵn; thêm chuỗi WPU101 (giá thép Mỹ từ 1926) và CPIAUCNS (giảm phát).
+  Giá cổ phiếu dài hạn lấy từ gói tài trợ `vnstock_data` (bản community trong vnstock_client giới hạn 8 năm).
+- `valuation/analysis/steel_cycle.py` (hàm thuần, có test tính tay): zigzag đỉnh/đáy với trạng thái thời gian thực
+  (không nhìn trước), thời lượng pha, Kaplan–Meier cho xác suất pha kết thúc, lợi suất theo trạng thái, tương quan
+  trễ, nghiên cứu sự kiện, mùa vụ. `scripts/steel_cycle_report.py` nạp/lưu dữ liệu ở `data/steel_cycle/`, ghi
+  `reports/steel_cycle/`. Tham số ở `steel_cycle` trong defaults.yaml (ngưỡng 20% hàng hóa, 35% cổ phiếu).
+- Không ghi DB, không đụng mô hình định giá. Kết quả là tần suất lịch sử, không phải khuyến nghị.
+
+### D64 — λ ROE ngân hàng 0,5; ngưỡng hai chân 5,0 (2026-10-20, người dùng quyết — owner phi)
+- **Q1:** `bank_terminal.roe_convergence` 1,0 → 0,5: ROE terminal = nửa ROE bền vững riêng, nửa ROE ngành. Đo 18 NH
+  (mốc 20/10): EIB −28%, SSB −26%, VPB −22%, MSB −19%, CTG −18%, TPB −16%, SHB −14%, OCB −13%, BID −10%, NAB −9%,
+  VIB −8%, VCB/TCB −7%, STB −6%, ACB −4%; LPB +7%, MBB +4%, HDB +3% (ROE riêng > ngành); EVF không đổi. MSB, BID,
+  VIB, TPB vào band ở hai mốc golden (gỡ khỏi registry; gỡ hold TPB — upside +74%); MBB ra band +20,7% (20/10).
+- **Q2:** `publication_gate.leg_ratio_review` 3,0 → 5,0. Mở công bố: BSI, FTS (không có CTCK), SHB (upside +99,9%,
+  CTCK n=1 lệch +5,5%), VCI (−50,7%, n=1, luận điểm D26), FRT (−49,9%, n=13 → hold chờ duyệt).
+- **Q3/Q4** (audit nguồn công ty con SOTP qua API vnstock chỉ đọc, không ghi DB; MSN cộng MSR 92,89% và MML 94,3%
+  theo thị giá vào holdings) đã được phi cho phép — thực hiện ở bước r4b (D65).
+- Kèm theo (phản biện r3): driver NH analyst/kịch bản sửa cộng lên đường đã phai ROE thay vì bỏ dòng cân (đúng dấu);
+  một nguồn thuế dài hạn `wacc.marginal_tax_rate`. Ghi chú: /private/tmp/claude-501/upgrade_notes/r4a_decisions_models.md.
+
+### D65 — Audit nguồn công ty con SOTP; MSN cộng MSR/MML theo thị giá (2026-10-20, người dùng quyết — owner phi)
+- **Q3:** `scripts/collect_sponsor_data.py` và `scripts/audit_vn100_data.py` nhận VN100 ∪ công ty con khai trong
+  `config/sotp_holdings.yaml` (`universe.audit_universe/select_audit_tickers`: whitelist + regex `[A-Z0-9]{3}`);
+  audit đầy đủ cũng giữ dòng công ty con; `--finalize-existing` đòi đủ 100 mã VN100 (dòng công ty con là phần
+  thêm). Thu cache vnstock/VCI (chỉ đọc) và audit `--tickers` GEL, VSH, TBC, TMP, HHS, MSR, MML: status 100 → 107
+  dòng (100 dòng cũ giữ nguyên), 0 xung đột. Không ghi DB. GEX/REE/TCH hết `SOTP_SUBSIDIARY_DATA_ERROR`.
+- **Q4:** MSN holdings thêm MSR 92,89% và MML 94,3% (thị giá): FV 92.535 → 126.062đ (20/10, +35,2% CTCK n=6) /
+  117.171đ (28/09, +27,2%). Registry MSN `out_of_band_justified` (owner phi); golden MSN kiểm phần lõi (MCH, TCB)
+  trong golden_tolerance và phần MSR/MML đúng công thức tính tay.
+- GEX, REE, TCH, MSN vẫn chặn `SOTP_HOLDINGS_UNVERIFIED` tới khi phi rà tỷ lệ và điền `reviewed_by`/`as_of`.
+  Khi mở: REE −40,5% (n=10), TCH −59% (n=2) / −63% (n=3) là must_fix trong registry. Ghi chú:
+  /private/tmp/claude-501/upgrade_notes/r4b_sotp_audit.md, bảng rà soát sotp_review_table.md.
+
+### D66 — Nâng cấp định giá toàn VN100 (2026-10-19→20, người dùng duyệt gói NH, SOTP chiết khấu 10%, XDCB theo sổ, ghi DB)
+- Tổng hợp các bước s1–s7, phản biện fx1–fx3, r3, r4 và fin_a; mỗi sửa có test tái hiện viết trước; chỉ s7 ghi DB.
+  Quyết định riêng đã ghi: λ ROE NH 0,5 và ngưỡng hai chân 5,0 (D64); audit công ty con SOTP, MSN cộng MSR/MML
+  (D65). Ghi chú chi tiết: /private/tmp/claude-501/upgrade_notes/*.md. Vận hành: manual §11–§14.
+- **Lỗi code/dữ liệu & cờ (s1, fx1):** `sector_peer_multiples` lọc theo `sector` (D62-C lần đầu thực sự chạy);
+  NH giữ dấu chi phí dự phòng (NAB hết BANK_PBT_MISMATCH), số dư bình quân TTM lấy cùng quý năm trước; chỉ tính
+  bội số mà route() dùng; UNEXPLAINED_CURRENT_ASSETS theo tổng mục B01; bỏ năm vi phạm đẳng thức IS chỉ khi nằm
+  ngoài mọi cửa sổ mô hình; FILING_BS_INCOMPLETE (PVT, GAS Q2/2026). Thuế = −số nguồn, chia cho LNTT trừ lãi LD/LK
+  (BAF 22,7% → 10,2%). as_of quy số cp về cùng gốc giá đã điều chỉnh (hết lookahead HDB, TPB, GMD; gộp các đợt
+  cùng ngày: BAF 334 → 365 tr cp). RIGHTS_ISSUE_UNDATED (info) tách khỏi CORPORATE_ACTION_UNDATED. Cổng
+  VALUATION_LEGS_DIVERGE (s1 cho DCF; fx2 dùng chung CK/BH/NH); ngưỡng +150%/−60% vào config; thêm 48 mô tả cờ,
+  level cờ khớp cổng công bố.
+- **CK/BH/EVF (s2, r3a):** EVF nhận diện theo mẫu BCTC TCTD → RI 0,5 + P/B 0,5 (lỗi → 11.235đ, công bố). Chân P/B
+  thị trường có kỳ TTM; dưới 3 quan sát thì lấy trung vị P/B nhóm. Beta nhóm bottom-up cho NH, CK
+  (`coe_convention.peer_beta_groups`). BH dùng P/B lịch sử riêng. Payout CK/BH lấy từ cổ tức tiền 3 năm (cờ Gordon
+  chỉ cảnh báo). fx2/r3a: CK/BH quy đổi ROE bình quân ↔ đầu kỳ; P/B trước đợt quyền mua/riêng lẻ tính pro-forma
+  vốn hóa/(VCSH + tiền thu); không ước được thì loại quan sát (chỉ nhóm CK, BH).
+- **Ngân hàng (s3, fx2, r3a, r4a, fin_a; λ ở D64):** ROE terminal hội tụ về ROE ngành. Một định nghĩa ROE = LNST /
+  VCSH bình quân; RI và P/B hợp lý dùng ROE_T·(1 + g/2). Chi phí tín dụng phai đối xứng từ TTM về trung vị 3 năm.
+  Tăng trưởng tín dụng phai về GDP danh nghĩa 8%. ROE năm 3–5 phai về ROE_T (dòng `roe_fade_adjustment`, cờ
+  BANK_ROE_FADE_PLUG). Driver do analyst/kịch bản sửa được cộng delta trên driver gốc (`driver_base`). Ràng buộc
+  vốn áp đối xứng cho đường gốc và đường sửa. Không làm F4 (cổ tức theo VCSH/TS mục tiêu).
+- **DCF/thuế/XDCB (s4, fx2, r3a, r4a):** thuế hiệu dụng = Σthuế/ΣLNTT 3 năm tài chính, kẹp `dcf.effective_tax_band`.
+  NOPAT terminal và lá chắn thuế nợ trong WACC dùng thuế biên 20% (một nguồn `wacc.marginal_tax_rate`, ô "Thuế
+  terminal" trên UI). Bỏ trần 5,0 của sales-to-capital (giữ sàn 0,3). XDCB dở dang (mã 242) cộng theo giá sổ vào
+  vốn chủ và loại khỏi EV hoạt động của bội số (người dùng duyệt, NPV = 0); vượt `dcf.cip_share_review` 0,5 → chặn
+  CIP_DOMINATES_VALUE (NKG, HSG, BAF). Chân P/E phụ = P/E trailing × LN TTM; EV/EBITDA mã không chu kỳ dùng EBITDA
+  TTM. ΔDR/ΔDT chỉ áp cho SIP. Thêm cờ MINORITY_AT_BOOK_MATERIAL (không đổi FV).
+- **SOTP & đổi phương pháp (s5, fx3, r4b; MSR/MML ở D65):** chế độ SOTP_HOLDINGS (`config/sotp_holdings.yaml`):
+  FV = [VCSH mẹ + Σ(stake × vốn hóa − giá sổ)] / cp × (1 − 10%), chiết khấu holding do người dùng duyệt. Áp cho
+  VIC, MSN, GEX (GEL 70,21% thay look-through VGC), REE, TCH. Chặn tới khi người dùng điền `reviewed_by`/`as_of`
+  (UNVERIFIED; quá TTL 180 ngày → STALE); lỗi dữ liệu công ty con chặn mã mẹ (SOTP_SUBSIDIARY_DATA_ERROR). PC1 →
+  EV/EBITDA, HDG và VCG → FCFF (đảo D39, không gồm VGC); SIP → FCFF 0,5 + EV/EBITDA 0,5.
+- **RNAV kỹ thuật (s6):** proxy chỉ đánh giá lại tồn kho + BĐS đầu tư (cơ sở VHM 410.285 → 15.878 tỷ); giả định
+  proxy một nguồn config; thặng dư tính sau thuế phổ thông 20%. AI_RNAV theo đẳng thức NAV (bắt buộc giá sổ ròng,
+  chi phí/m², tỷ lệ sở hữu). AI_SOTP hết trừ nợ ròng/CĐKKS hai lần. Land Bank trừ giá sổ và thuế. Mọi mã RNAV vẫn
+  VALUATION_PROXY (chặn).
+- **Ghi DB (s7, người dùng duyệt):** sao lưu `backups/vn100_full.pre_s7_20261020.db`. `run_ingest` (chỉ upsert, không
+  UPDATE/DELETE) cho 18 mã công ty con/liên kết ngoài VN100 với is_vn100 = 0: +30.314 dòng giá, +132.911 dòng BCTC.
+  Rổ VN100 vẫn 100 mã; chạy lại lượt 5 không nhân đôi dòng. Ngày GDKHQ: 0 dòng ghi (VSDC chưa có ĐKCC cho 13 đợt).
+  PVT: không bổ sung tổng mục BCĐKT (PDF lỗi chứng chỉ TLS, không bỏ kiểm tra để tải).
+- **Audit nguồn (s1, fx1, r3b, r4b):** dấu vân tay chỉ băm ô trọng yếu của kỳ ĐÃ đối chiếu (`audited_periods`).
+  Kỳ mới → SOURCE_AUDIT_PARTIAL (cảnh báo). Số của kỳ đã đối chiếu bị đổi, hoặc quá `audit.max_unaudited_periods`
+  kỳ chưa đối chiếu → SOURCE_AUDIT_STALE (chặn). F2c đo ΔFV xung đột trên bản sao DB trong bộ nhớ: ≤ 1% →
+  SOURCE_CONFLICT_IMMATERIAL (DPM, SSI mở công bố). FILING_PRECEDENCE đo trên số thực dùng. `--tickers` gộp vào
+  audit đã lưu. Status nay có 107 dòng (100 + 7 công ty con), 0 xung đột ở công ty con.
+- **Bảo mật ingest (s7, fx1, r4b):** trước đây mã mới luôn được chèn is_vn100 = 1, nay `run_ingest` mặc định
+  `is_vn100=False`. Route `/ingest` kiểm `^[A-Z0-9]{3}$` + whitelist VN100 ∪ công ty con. `universe.audit_universe`
+  kiểm regex trước khi gọi API/ghi cache.
+- **Hold (`config/event_holds.yaml`):** thêm NAB (sổ liên NH phình, cần RWA), BVH (thiếu Embedded Value), VRE
+  (25.468 tỷ TS dài hạn chưa phân loại), POW (TTM chưa đủ 4 quý công suất mới), SIP (TV coi tiền thuê trả trước
+  là tiền vĩnh viễn, thiếu quỹ đất), VCG, PC1 (mới mở, lệch > 30% CTCK), FRT (mới mở, −49,9%, n=13), REE, TCH (đặt
+  sẵn: −40,5% / −59% khi điền reviewed_by). TPB thêm ở fx3 rồi gỡ ở r4a (upside +73,7%). Giữ PNJ, HHV. Luật hold
+  thống nhất: `publication_gate.new_listing_hold_*` (0,40, ≥ 3 CTCK, upside 100%).
+- **Bác/không làm:** cổ tức NH theo VCSH/TS mục tiêu (proxy sai cho CAR, cần RWA). Bội số theo số cp tại từng kỳ
+  (số cp quỹ, ngày GDKHQ, giá phát hành chưa tin cậy). Loại quan sát trước phát hành cho NH/DCF (không có giá phát
+  hành; FV đổi gấp nhiều lần độ méo). Ép driver NH về ROE_T (không có chuẩn CFA/Damodaran). Bảng thuế ưu đãi theo
+  mã (cần căn cứ pháp lý). Ước CĐKKS theo thị giá (chưa có phương pháp từ dữ liệu sẵn có). VGC sang EV/EBITDA; BCM
+  SOTP; module KCN, chân P/B BĐS, bội số chu kỳ chuẩn hóa (F9), NT2 đời hữu hạn, beta bottom-up phi tài chính
+  (ngoài phạm vi). CHP, PPC, PAN không khai holdings (nguồn tỷ lệ cũ hơn 2 năm hoặc không có).
+- **Kết quả đo** (100 mã, DB thật, đồng thuận CTCK 19/10): công bố 58 → 61; công bố có n ≥ 3 CTCK trong ±20%:
+  21/39 → 29/41; trung vị |lệch| 17,2% → 11,8%. Baseline chạy trên dữ liệu cũ hơn (giá khác ở 91 mã, đồng thuận
+  khác ở 19 mã) nên chênh lệch gồm cả trôi dữ liệu. Các mốc giữa: s8 64 / 30 trên 43 / 10,8%; fx4 55 / 26 trên 40 /
+  15,0% (sửa công thức ROE NH khi λ = 1, P/B CK, cổng hai chân 3,0, hold VCG/PC1/TPB); r4 sau D64. fin_a không đổi FV Base hay cổng công bố. Không mã công
+  bố nào có upside > 100% hoặc FV âm (SHB +99,9% sát ngưỡng); 12 mã công bố n ≥ 3 ngoài band đều có mục registry.
+  pytest toàn bộ (fin_b): 981 passed, 4 skipped, gồm test_golden_consensus 3 ca hai mốc.
+- **Chờ người dùng:** kịch bản Bull/Bear NH có bước nhảy LN năm 5 → 6 (phản biện r4, major); `reviewed_by`/`as_of`
+  cho 5 holder SOTP và stake MSR sau Elmet (0,8787 cùng mẫu số DB); các mục registry owner "claude-de-xuat" (vd
+  MBB, REE, PC1, VCG, FRT, SSI, HCM); các ngưỡng đề xuất liệt kê ở manual §14; EIB/OCB/EVF registry data_blocked
+  mà engine vẫn công bố.

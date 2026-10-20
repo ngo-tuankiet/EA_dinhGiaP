@@ -31,11 +31,12 @@ def test_g1_pb_rises_with_market_share():
     assert hi["blended_fair_value_per_share"] > lo["blended_fair_value_per_share"]
 
 
-# ---------- G2: EV/EBITDA chuẩn hóa 3 năm ----------
+# ---------- G2: EV/EBITDA chuẩn hóa 3 năm (ngành chu kỳ: hàng không/xi măng; thiếu DT → trung bình) ----------
 def _ev(ebitda_history):
     cf = {"ebitda_history": ebitda_history, "total_debt": 0.0,
           "cash_and_equivalents": 0.0, "shares_outstanding": 1000e6, "current_price": 20000}
-    a = {"target_ev_ebitda": 6.0, "norm_years": 3}
+    # fx2: mã KHÔNG chu kỳ dùng EBITDA TTM (cùng định nghĩa bội số trailing); G2 chỉ còn cho mã chu kỳ.
+    a = {"target_ev_ebitda": 6.0, "norm_years": 3, "cyclical": True}
     return EVEBITDAValuationModel("ZZEV", cf, a)
 
 

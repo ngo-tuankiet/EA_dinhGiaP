@@ -67,11 +67,23 @@ class AssumptionsBank(BaseModel):
     # Giả định vĩnh viễn
     terminal_growth_rate: float = Field(0.02, description="Tăng trưởng vĩnh viễn g")
     sustainable_roe: Optional[float] = Field(None, description="ROE bền vững dài hạn")
+    industry_roe: float | None = Field(
+        None, description="ROE trung bình ngành — đích hội tụ của ROE terminal (None = không hội tụ)"
+    )
+    roe_convergence: float = Field(
+        0.0, description="λ: ROE terminal = ROE bền vững + λ·(ROE ngành − ROE bền vững); 0 = không hội tụ"
+    )
     min_equity_to_assets: Optional[float] = Field(
         None, description="Sàn VCSH/Tổng tài sản (trung vị 3 năm của chính NH) — ràng buộc vốn cho dự phóng"
     )
     historical_pb_median: Optional[float] = Field(
         None, description="P/B trung vị các cuối năm gần nhất của chính mã — chân so sánh thị trường"
+    )
+
+    # Ảnh chụp driver LN máy đặt (credit_growth/nim/cir/credit_cost) lúc dựng giả định: dòng cân phai ROE tính
+    # từ driver gốc, phần analyst/kịch bản sửa cộng thẳng vào LN (forecast_bank, r4a). None = driver hiện tại.
+    driver_base: dict[str, list[float]] | None = Field(
+        None, description="Driver LN gốc (máy đặt) — phần chênh do analyst sửa cộng lên đường đã phai ROE"
     )
 
     # Trọng số định giá
@@ -94,6 +106,11 @@ class CompanyBank(BaseModel):
     warnings: List[str] = Field(default_factory=list)
     # Cờ độ tươi dữ liệu (STALE_PRICE/STALE_MACRO_RF...) do freshness gate gắn.
     data_flags: List[str] = Field(default_factory=list)
+    last_period_is_ttm: bool = Field(
+        False,
+        description="Kỳ cuối là TTM chưa trọn năm tài chính (mode TTM, quý cuối < 4) — chồng quý năm trước, "
+        "loại khỏi cửa sổ năm tài chính đầy đủ (ROE ngành). Quý cuối = 4 thì kỳ cuối là FY đủ 4 quý.",
+    )
 
     @model_validator(mode="after")
     def validate_bank_balance_sheet(self) -> 'CompanyBank':

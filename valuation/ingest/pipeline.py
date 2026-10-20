@@ -341,12 +341,16 @@ def run_ingest(
     incremental: bool = True,
     include_yearly: bool = True,
     include_market_flows: bool = True,
+    is_vn100: bool = False,
 ):
     """
     Orchestrator hàm lấy dữ liệu, chuẩn hóa và lưu DB.
     data_types: ['prices', 'financials']
     incremental: True (mặc định) → giá chỉ kéo từ ngày cuối có dữ liệu −5 ngày;
                  False → full backfill từ 2020 (dùng khi nghi dữ liệu lịch sử hỏng).
+    is_vn100: cờ rổ cho mã MỚI. Mặc định False (AGENTS §5): mã lạ gửi qua API/bot không được tự vào rổ;
+              thành viên VN100 do universe.sync_vn100_membership (scripts/sync_vn100_universe.py) đặt,
+              hoặc caller truyền True khi danh sách nguồn chính là rổ VN100. Mã đã có giữ nguyên cờ.
     """
     # 1. Đảm bảo ticker tồn tại (để foreign key ko báo lỗi)
     db = SessionLocalWrite()
@@ -363,7 +367,7 @@ def run_ingest(
                         exchange="",
                         sector=info.get("sector", ""),
                         industry=info.get("icb_code_lv4", ""),
-                        is_vn100=True,
+                        is_vn100=is_vn100,
                     )
                     .on_conflict_do_nothing()
                 )

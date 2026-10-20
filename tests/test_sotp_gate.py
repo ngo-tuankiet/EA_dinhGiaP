@@ -59,7 +59,7 @@ class TestCongChanProxy:
 
     def test_che_do_AI_SOTP_khai_bao_mang_thi_khong_bi_chan(self):
         """Khi analyst đã khai báo từng mảng thì không còn là proxy nữa."""
-        segs = [{"gia_tri": 50_000.0, "multiple_ky_vong": 0, "loai_gia_tri": "EQUITY"}]
+        segs = [{"gia_tri": 50_000.0, "multiple_ky_vong": 0, "loai_gia_tri": "EQUITY", "hop_nhat": False}]
         m = _sotp(net_income_ty=[1000.0] * 3, equity_ty=100_000.0,
                   shares=1_000_000_000, price=208_500.0, sotp_segments=segs)
         res = m.perform_valuation()
@@ -104,4 +104,7 @@ class TestTichHopValuate:
             db.close()
         assert res["not_rated"] is True
         assert res["recommendation"] == "NOT_RATED"
-        assert any("PROXY_IMPLAUSIBLE" in f for f in res["flags"])
+        # s5: VIC khai báo cổ phần niêm yết (VHM/VPL/VRE) → SOTP_HOLDINGS thay proxy; vẫn chặn vì chưa duyệt
+        # tỷ lệ sở hữu và FV thấp hơn thị giá quá ngưỡng (phần VinFast... không có dữ liệu cơ bản).
+        assert "SOTP_HOLDINGS_MODE" in res["flags"]
+        assert {"SOTP_HOLDINGS_UNVERIFIED", "DOWNSIDE_EXTREME_REVIEW"} <= set(res["flags"])

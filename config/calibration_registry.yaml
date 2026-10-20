@@ -40,8 +40,16 @@ tickers:
   # Xem D23 (bảng baseline) và kế hoạch GĐ3/GĐ4.
 
   # --- Nhóm PB/chứng khoán: ĐÃ SỬA ở D26, phần lệch còn lại là bất đồng quan điểm ---
-  # (VCI/HCM/SSI dùng chung một luận điểm; lặp lại để mỗi mã tự đứng được khi đọc.)
-  SSI: &ck_thesis
+  # (luận điểm D26 phi duyệt cho VCI/HCM/SSI. r3b 20/10/2026: SSI/HCM tách ra must_fix bên dưới vì cơ chế
+  # P/B mới của fx2 mục 9 / r3a mục 5 chưa được duyệt; VCI giữ luận điểm — đang bị chặn nên không đo.)
+  # r4a (20/10/2026): VCI mở công bố lại khi ngưỡng hai chân 3,0 → 5,0 — −50,7% (n=1, CTCK 31.200đ) ở cả hai mốc
+  # (FV 15.388đ, P/B riêng pro-forma 1,63x); luận điểm D26 (owner phi) giữ nguyên, không đổi trạng thái thay phi.
+  # SỬA NHẬN ĐỊNH (phản biện r3): mức giảm FV của VIX (−15%, r3a mục 5) và phần lệch thêm của SSI là do ĐỔI PHƯƠNG
+  # PHÁP (P/B lịch sử riêng post-money thay trung vị nhóm: VIX 1,14x vs 1,58x; SSI 1,57x vs 1,66x), KHÔNG phải sai
+  # số xấp xỉ công thức pro-forma. P/B post-money TERP chính xác: VIX trung vị 1,18x (gần 1,14x engine); SSI FY2022–
+  # 2025 1,04/1,64/1,61/2,07x vs pro-forma 0,83/1,57/1,54/1,90x (trung vị 4 năm 1,63x vs 1,55x). Duyệt TERP sẽ không
+  # phục hồi FV VIX; câu hỏi cho phi là chọn P/B riêng post-money hay trung vị nhóm.
+  VCI: &ck_thesis
     status: out_of_band_justified
     thesis: >-
       D26 đã sửa 3 lỗi thật: (1) ROE lệch tử/mẫu số (lấy LNST trước tăng vốn chia
@@ -64,50 +72,107 @@ tickers:
     owner: phi
     reviewed_on: 2026-08-11
     decision_ref: D26
-  VCI: *ck_thesis
-  HCM: *ck_thesis
+  SSI:
+    status: out_of_band_must_fix
+    thesis: >-
+      Luận điểm D26 (ROE mid-cycle vs ROE 22–30% ngụ ý trong giá mục tiêu) phi duyệt ở mức −34,7%. Phần lệch
+      thêm do cơ chế P/B lịch sử CHƯA được duyệt: fx2 mục 9 loại quan sát trước đợt quyền mua 20% (trung vị
+      nhóm 1,66x thay 2,08x riêng, −44,2%), r3a mục 5 thay bằng pro-forma P/B = vốn hoá/(VCSH + tiền thu C)
+      (1,57x riêng, 4 quan sát pro-forma). Số đo r3b: −45,7% ở cả 28/09 và 20/10 (n=3), FV 16.238đ vs thị giá
+      19.800đ. Giữ must_fix (không justified) tới khi phi duyệt phương pháp P/B pro-forma/loại quan sát.
+    evidence: ["DECISIONS.md#D26", "upgrade_notes/fx2_models.md", "upgrade_notes/r3a_models.md",
+               "upgrade_notes/r3b_audit_registry.md"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
+    decision_ref: D26
+  HCM:
+    status: out_of_band_must_fix
+    thesis: >-
+      Luận điểm D26 phi duyệt ở mức lệch cũ; nay −52,1% (28/09) / −52,7% (20/10), n=1, FV 13.715đ vs thị giá
+      24.200đ. Chân P/B rơi về trung vị nhóm (1,46x) vì fx2 mục 9 loại mọi quan sát trước đợt quyền mua 25%
+      (GDKHQ 16/07, hoàn tất 23/10/2026 — chưa có quý BCTC để ước tiền thu C cho pro-forma r3a). Cơ chế này
+      chưa được phi duyệt → must_fix; một CTCK cũng chưa đủ làm mốc.
+    evidence: ["DECISIONS.md#D26", "upgrade_notes/fx2_models.md", "upgrade_notes/r3a_models.md",
+               "upgrade_notes/fx4_verify.md", "upgrade_notes/r3b_audit_registry.md"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
+    decision_ref: D26
+  # fx2 (20/10/2026, claude-de-xuat chờ phi duyệt): chân P/B lịch sử nhóm CK loại quan sát trước đợt quyền
+  # mua/riêng lẻ (relative_multiples.capital_raise_exclusion_groups). SSI (quyền mua 20%, niêm yết 25/02/2026)
+  # còn 1 quan sát sạch → trung vị P/B nhóm 1,66x thay 2,08x: −34,7% → −44,2% (28/09, n=3); VCI bị chặn
+  # (RI 6.162 vs P/B 23.618, 3,8x > leg_ratio_review); HCM −52,5% (n=1). Luận điểm ROE mid-cycle ở trên giữ
+  # nguyên; phần lệch thêm của SSI là chân P/B nhóm thấp hơn P/B riêng — rà lại khi có giá phát hành để
+  # pro-forma thay vì bỏ quan sát.
 
   # --- Nhóm SOTP: proxy sổ sách vô nghĩa với holding (sẽ sửa ở GĐ4) ---
-  MSN: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11}
-  TCH: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11}
-  # REE: đã bỏ khỏi registry — với band SOTP 0,35 thì -27,6% nằm TRONG band nên
-  # không còn là ngoại lệ cần giải trình (harness báo OBSOLETE_ENTRY). Phương
-  # pháp SOTP vẫn sẽ được sửa ở GĐ4 cho cả nhóm; registry chỉ theo dõi các mã
-  # NGOÀI band, không phải chất lượng phương pháp.
+  # MSN: ĐÃ GỠ 20/10/2026 (s5) — proxy thay bằng SOTP_HOLDINGS (MCH, TCB theo thị giá): −0,8% (19/10) /
+  # −0,9% (28/09, mô phỏng đã điền reviewed_by) so với CTCK n=6. THÊM LẠI 20/10/2026 (r4b) sau quyết định phi Q4
+  # (MSR, MML theo thị giá) — xem mục MSN bên dưới.
+  # r4b (20/10/2026): audit nguồn công ty con (GEL, VSH, TBC, TMP, HHS, MSR, MML) xong → hết
+  # SOTP_SUBSIDIARY_DATA_ERROR; GEX/REE/TCH/MSN chỉ còn chặn SOTP_HOLDINGS_UNVERIFIED (chờ người dùng điền
+  # reviewed_by). Ba mục dưới chưa được đo bởi golden (FV chưa công bố) và dùng ngay khi mở. GEX trong band
+  # (−8,1% n=1 / +8,3% n=2) → không khai báo.
+  TCH:
+    status: out_of_band_must_fix
+    thesis: >-
+      Số đo r4b (claude bổ sung, giữ owner/ngày của phi): SOTP_HOLDINGS FV 7.727đ (20/10, CTCK 18.850đ n=2,
+      −59,0%) / 7.801đ (28/09, 21.100đ n=3, −63,0%); thị giá 11.250đ. FV = (VCSH mẹ 11.621 tỷ + định giá lại
+      HHS) / 1.003,3 tr cp × 0,9; HHS 58,31% P/B 0,43 (vốn hóa 3.879 tỷ vs VCSH 9.037 tỷ) → định giá lại
+      −3.008 tỷ (−2.698đ/cp sau chiết khấu). Dự án BĐS Hoàng Huy giữ theo sổ sách (không RNAV) — CTCK định giá quỹ dự án, nguồn
+      chính của chênh lệch; FV dưới cả giá sổ 11.583đ/cp vì chiết khấu holding 10% áp trên toàn VCSH.
+    evidence: ["upgrade_notes/r4b_sotp_audit.md", "upgrade_notes/s7_db.md", "config/sotp_holdings.yaml#TCH"]
+    owner: phi
+    reviewed_on: 2026-08-11
+  # REE: bỏ khỏi registry trước đây (proxy −27,6% trong band SOTP 0,35). THÊM LẠI 20/10/2026 (r4b): chế độ
+  # SOTP_HOLDINGS (s7) cho −40,5% ở cả hai mốc.
+  REE:
+    status: out_of_band_must_fix
+    thesis: >-
+      r4b: SOTP_HOLDINGS FV 36.679đ (20/10) / 36.642đ (28/09) vs CTCK 61.600đ (n=10 cả hai mốc) = −40,5%; thị giá
+      45.050đ. FV = (VCSH mẹ 21.739 tỷ + định giá lại VSH/TBC/TMP 3.647 tỷ) / 622,9 tr cp × 0,9; ba công ty con
+      niêm yết (P/B 1,7–1,9) chỉ thêm 5.269đ/cp (sau chiết khấu). Phần còn lại (thủy điện/nước chưa niêm yết, CHP
+      và PPC không khai vì nguồn tỷ lệ cũ > 2 năm, BĐS cho thuê E.Town, M&E) giữ theo sổ sách — CTCK định giá các
+      mảng này bằng DCF/SOTP riêng. Lỗi phương pháp (phần chưa niêm yết theo sổ), không phải quan điểm.
+    evidence: ["upgrade_notes/r4b_sotp_audit.md", "upgrade_notes/s7_db.md", "config/sotp_holdings.yaml#REE"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
+  MSN:
+    status: out_of_band_justified
+    thesis: >-
+      Quyết định phi Q4 (20/10/2026): cộng MSR 92,89% và MML 94,3% THEO THỊ GIÁ. FV 126.062đ (20/10, CTCK 93.250đ
+      n=6, +35,2%, ngoài band SOTP 0,35) / 117.171đ (28/09, 92.100đ n=6, +27,2%, trong band). Tính tay 20/10: MSR
+      0,9289 × (vốn hóa 72.039 − VCSH 14.384 tỷ) = 53.556 tỷ → +31.700đ/cp; MML 0,943 × (8.610 − 5.338) = 3.085 tỷ →
+      +1.826đ/cp (× 0,9 / 1.520,5 tr cp); không MSR/MML FV 92.535đ (−0,8%). CTCK định giá MSR theo mô hình riêng;
+      thị giá MSR (P/B 5,0, free float ~7%) có một giao dịch bên thứ ba cùng cỡ ủng hộ (Elmet 4,99%, định giá vốn
+      chủ ~2,5 tỷ USD, chưa xác nhận hoàn tất).
+    evidence: ["upgrade_notes/r4b_sotp_audit.md", "upgrade_notes/s7_db.md", "config/sotp_holdings.yaml#MSN",
+               "DECISIONS.md#D65"]
+    owner: phi
+    reviewed_on: 2026-10-20
+    decision_ref: D65
   # VIC không có đồng thuận CTCK trong 180 ngày -> không đo được, không khai báo.
 
   # --- Ngân hàng: D29 đã sửa overshoot của D20 ---
   # ĐÃ GỠ khỏi registry (harness báo OBSOLETE_ENTRY sau D29): ACB (+44,3%→+18,1%),
   # VIB (+42,4%→+8,8%), OCB (+55,1%→+19,7%), BID (-21,4%→-5,7%) — đều đã vào band.
-  # Còn lại 4 mã dưới đây vẫn ngoài band sau D29:
-  MBB:
-    status: out_of_band_must_fix
-    thesis: >-
-      Lệch +89% sau D29 (giảm nhẹ từ +93%). ROE bền vững 19,6% rất ổn định qua 6
-      kỳ (21/23/22/20/19/20%) nên ước lượng median không kéo xuống được, trong khi
-      thị trường chỉ trả P/B 1,25x (mô hình 1,67x). Chưa giải thích được vì sao
-      thị trường định giá thấp một ngân hàng ROE ~20%; nghi vấn chất lượng tài sản
-      hoặc COE nhóm ngân hàng quá thấp. CẦN ĐIỀU TRA RIÊNG.
-    evidence:
-      - "DECISIONS.md#D29"
-      - "ROE 6 kỳ: 21%/23%/22%/20%/19%/20% — không có xu hướng giảm"
-      - "P/B mô hình 1,67x vs thị trường 1,25x (tỷ lệ 1,34)"
-    owner: phi
-    reviewed_on: 2026-08-11
-    decision_ref: D29
-  # TPB: ĐÃ GỠ 02/10/2026 — sau D47 lệch +0,3% (trong band).
-  HDB: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11, decision_ref: D29}
-  # EIB/STB lệch ÂM sâu — ROE sụp thật (EIB 14%→2%, STB 18%→5%), mô hình phản ánh
-  # đúng số liệu nhưng thị trường vẫn trả P/B 1,28x/2,24x. Nghi vấn dữ liệu LNST
-  # hoặc câu chuyện tái cơ cấu mà mô hình không nắm được.
-  EIB: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11}
-  STB: {status: out_of_band_must_fix, owner: phi, reviewed_on: 2026-08-11}
+  # ĐÃ GỠ 19/10/2026 (gói NH s3: ROE terminal hội tụ ROE ngành λ=1, chi phí tín dụng phai đối xứng,
+  # tăng trưởng tín dụng phai về GDP danh nghĩa) — vào band ở cả mốc golden 28/09 lẫn 19/10:
+  # MBB (+27% → +9,7% / +10,8%), STB (−27% → −17,3% / −19,8%), CTG, VPB (xem nhóm must_fix bên dưới).
+  # TPB: ĐÃ GỠ 02/10/2026 — sau D47 lệch +0,3% (trong band). Ra band lại ở mốc 28/09 (nhóm 3), ĐÃ GỠ lần 2
+  # 20/10/2026 (fx1, xem dưới).
+  # HDB, TPB: ĐÃ GỠ 20/10/2026 (fx1 mục 8) — lệch ở mốc golden 28/09 là lookahead lệch gốc: giá prices_daily
+  # đã điều chỉnh lùi theo cổ tức CP/thưởng có GDKHQ SAU 28/09 nhưng số cp lấy tại 28/09. Nay
+  # repo.get_shares_outstanding_repo quy số cp as_of về gốc giá (× (1 + Σ tỷ lệ cùng ngày)):
+  # HDB 5.005,28 → 6.506,86 tr cp (25% + 5%, GDKHQ 09/10), +33,0% → +11,2% (28/09, n=10), +8,4% (20/10, n=8);
+  # TPB 2.774,05 → 3.190,15 tr cp (15%, GDKHQ 02/10), +29,0% → +17,6% (28/09, n=2), +16,9% (20/10, n=3).
+  # Cả hai trong band ở hai mốc. Đề xuất claude-de-xuat (cho phi duyet).
+  # EIB: chuyển must_fix → data_blocked 19/10/2026 (nhóm 3). Hội tụ ROE ngành đổi bản chất lệch.
 
   # =========================================================================
   # NHÓM 2 — LỆCH CÓ CHỦ Ý, ĐÃ GIẢI TRÌNH
   # =========================================================================
 
-  # HPG: ĐÃ GỠ 02/10/2026 — sau D45 lệch −14,5% nằm trong band (harness báo OBSOLETE_ENTRY).
+  # HPG: gỡ 02/10/2026 (sau D45 trong band); D61 làm lệch lại → xem nhóm must_fix.
 
   # =========================================================================
   # NHÓM 3 — KHÔNG ĐỦ DỮ LIỆU ĐỂ KẾT LUẬN
@@ -122,6 +187,50 @@ tickers:
     evidence: ["consensus_view.thin = True (1 CTCK)"]
     owner: phi
     reviewed_on: 2026-08-11
+  # --- Ngân hàng sau gói s3 (19/10/2026): ROE terminal hội tụ ROE ngành (λ = 1; r4a 20/10/2026: phi đổi λ = 0,5) ---
+  # fx2 (20/10/2026): ROE đo trên VCSH BÌNH QUÂN (ROE ngành 16,97% → 18,18%), RI terminal/P/B hợp lý dùng
+  # ROE_T·(1 + g/2), và mô hình 3 giai đoạn: ROE năm 3–5 phai tuyến tính từ driver về ROE_T (hết bước nhảy
+  # LN năm 6). Cả 18 NH tăng FV 5–20%; NH có ROE driver thấp tăng mạnh nhất (EIB +19,5%, SSB +19,6%, MSB +17%).
+  EIB:
+    status: data_blocked
+    thesis: >-
+      Mốc 28/09 chỉ 1 CTCK (26.000đ, 03/04/2026; hết cửa sổ 180 ngày → n=0 ở 20/10). ROE dự phóng driver
+      chỉ 4,7% (TTM chứa quý Q4/2025 bất thường). r4a (λ = 0,5, quyết định phi): ROE_T 11,4% thay 18,2%, FV
+      22.449 → 16.149đ (−0,6% thị giá), mốc 28/09 −13,7% → −37,9% (n=1); dòng cân phai ROE = 60% LN năm 5
+      (BANK_ROE_FADE_PLUG). Giá trị vẫn dựa phần lớn vào giả định phục hồi ROE — một ý kiến CTCK (cũ 6 tháng)
+      không đủ kết luận.
+    evidence: ["consensus_view: n_brokers = 1", "upgrade_notes/s3_banks.md", "upgrade_notes/fx2_models.md",
+               "upgrade_notes/r4a_decisions_models.md"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
+  OCB:
+    status: data_blocked
+    thesis: >-
+      Chỉ 1 CTCK (VDSC 11.650 → 11.300đ). OCB dưới mức ngành (ROE bền vững riêng 13,2%, trung vị ROE 3 năm tài
+      chính 11,6%). fx2 (λ = 1): +46,2% (28/09), +50,8% (20/10). r4a (λ = 0,5, quyết định phi): ROE_T 15,7%, FV
+      17.038 → 14.830đ, +27,3% (28/09) / +31,2% (20/10), n=1. Một ý kiến CTCK không đủ làm mốc. Lưu ý (r3c):
+      trạng thái data_blocked không chặn công bố — engine vẫn công bố OCB (upside +47,6%).
+    evidence: ["consensus_view: n_brokers = 1", "upgrade_notes/s3_banks.md", "upgrade_notes/fx2_models.md",
+               "upgrade_notes/r4a_decisions_models.md"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
+  # r4a (20/10/2026): phi quyết λ = 0,5 (bank_terminal.roe_convergence, Q1) → ĐÃ GỠ (vào band ở CẢ HAI mốc golden,
+  # harness 100 mã trên snapshot vn100_full.db): MSB +36,7% → +10,4% (20/10, n=3) / +28,5% → +3,7% (28/09, n=3),
+  # FV 19.269 → 15.561đ; BID +20,8% → +9,2% (n=8) / +7,2% (n=6), FV 53.432 → 48.336đ; VIB +24,2% → +14,0% (n=4)
+  # / +8,6% (n=4), FV 20.455 → 18.786đ; TPB +33,0% → +11,6% (n=3) / +12,0% (n=2), FV 24.730 → 20.763đ (hold TPB
+  # gỡ cùng lúc — upside +73,7% < 100%).
+  MBB:
+    status: out_of_band_must_fix
+    thesis: >-
+      r4a: ra band ở mốc 20/10 +20,7% (n=12; FV 30.950đ vs CTCK 25.650đ, thị giá 19.700đ); mốc 28/09 +19,5% (n=11,
+      trong band, sát mép). Nguồn đo được: λ = 0,5 (quyết định phi 20/10/2026) giữ một nửa ROE bền vững riêng
+      19,6% (cao hơn ROE ngành 18,2%) → ROE_T 18,9% thay 18,2%: FV λ = 1 là 29.741đ (+15,9%), λ = 0 là 32.183đ.
+      Chân RI 44.330đ gấp 2,52x chân P/B lịch sử 17.570đ (dưới ngưỡng 5,0 nên vẫn pha 50/50) — nguồn chênh giữa
+      hai chân chưa tách. Lệch +0,7 điểm % ngoài band là hệ quả trực tiếp của λ người dùng chọn,
+      chưa phải lỗi được xác định → claude đề xuất must_fix chờ phi chọn: chấp nhận (justified) hay rà ROE driver.
+    evidence: ["upgrade_notes/r4a_decisions_models.md", "config/defaults.yaml#bank_terminal.roe_convergence"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
 
   # =========================================================================
   # NHÓM 4 — PHÂN LOẠI 02/10/2026 (golden test D49). Đề xuất của Claude, chờ phi duyệt.
@@ -129,22 +238,29 @@ tickers:
   # DCF/EV thấp hơn CTCK 27–58%: nguyên nhân chung đã biết — giả định thận trọng ROIC dài hạn
   # = WACC sau năm 5 và P/E chuẩn hóa (người dùng chưa duyệt đổi). Là lỗi giả định cần sửa,
   # không phải quan điểm có chủ ý → must_fix chung một luận điểm.
-  BMP: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
-        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
-  BSR: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
-        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
-  DGW: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
-        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  # D61: cửa sổ biên 4 năm (2023–2026: 8,1/10,5/13,1/13,5% → trung vị 11,8%) chứa đáy chu kỳ thép 2023;
+  # cả 9 năm cho 13,5%. Lỗi giới hạn của mid-cycle theo cửa sổ với ngành chu kỳ, không phải quan điểm.
+  # D62: trước bị chặn (DOWNSIDE_EXTREME); bội số TTM cho P/E 20,8x nên có giá. Còn lệch vì chuẩn hoá trên
+  # pha tăng trưởng: LN 318→795→1.137 tỷ nhưng P/E áp trung vị 3 năm (795), biên 4 năm 2,1% gồm năm lỗ 2023.
+  FRT: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-20, decision_ref: D62,
+        thesis: "Chuẩn hoá LN/biên theo trung vị lịch sử khi DN đang tăng trưởng cấu trúc (Long Châu). r4a: mở lại khi ngưỡng hai chân 3,0 → 5,0 (chân DCF 38.224đ vs P/E 132.130đ = 3,46x): FV 85.177đ, −49,9% (20/10, n=13) / −49,7% (28/09, n=13) vs CTCK 170.000đ → hold trong config/event_holds.yaml tới khi phi duyệt"}
+  PVD: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-20, decision_ref: D61,
+        thesis: "Trước D61 bị chặn (biên 9 năm lẫn thời lỗ); sau D61 lệch −26%, nguyên nhân còn lại chưa xác định (nghi capex B). fx1 (thuế hiệu dụng loại lãi LD/LK khỏi mẫu số: 23,0% → 25,0%): −28,8% → −29,9% (28/09, n=7)"}
+  HPG: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-15, decision_ref: D61,
+        thesis: "Biên mid-cycle 4 năm rơi vào đáy chu kỳ thép (11,8% vs 13,1–13,5% hai năm gần nhất)"}
+  # s4 (19/10/2026): luận điểm "ROIC dài hạn = WACC" bị dữ liệu bác (ROIC thực đo của phần lớn nhóm ≈/dưới
+  # WACC). Nguyên nhân đo được: thuế suất sai mẫu số, trần s2c 5, nhánh P/E × trung vị LN 3 năm, CIP lệch hai
+  # đầu — đã sửa ở s4. DGW (−41,6% → −14,7% ở 28/09) và PLX (−32,3% → −17,4%) vào band nên đã GỠ.
+  BSR: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-19, decision_ref: D49,
+        thesis: "EV/EBITDA (không phải ROIC = WACC): bội số lịch sử 3,28x (sau loại XDCB) lệch do lọc dải bất đối xứng — năm EBITDA đáy 2024 bị loại; EBITDA giữa chu kỳ biên 5,9% vs TTM 13,1%. Chẩn đoán DCF-thấp F9 (chưa duyệt). −49,2% → −47,9% (28/09)"}
   HSG: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
         thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
-  MWG: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
-        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
-  PLX: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
-        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
-  GVR: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
-        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
-  VTP: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
-        thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
+  MWG: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-19, decision_ref: D49,
+        thesis: "s4 (thuế 25% → 22,4%, P/E × LN TTM, bỏ trần s2c 5 → 15,3): −39,5% → −20,5% (28/09), −22,0% (19/10). Còn lại: biên EBIT trung vị 4 năm 3,79% (gồm 2023: 0,37%) so TTM 5,77% — chuẩn hoá ngược khi đổi cơ cấu (BHX có lãi); chưa có SOTP theo mảng"}
+  GVR: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-19, decision_ref: D49,
+        thesis: "s4 (thuế 24,3% → 15,6%, XDCB 6.741 tỷ cộng sổ): −37,3% → −31,0% (28/09). Còn lại: DCF chỉ phản ánh mảng cao su, thiếu giá trị đất chuyển đổi KCN/đền bù (routing gốc SOTP/RNAV) — cần dữ liệu đất có nguồn"}
+  VTP: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-19, decision_ref: D49,
+        thesis: "s4 (thuế 25% → 21,0%, bỏ trần s2c 5 → 18,4, P/E × LN TTM): −44,5% → −44,7% (28/09) — LN TTM thấp hơn trung vị 3 năm nên nhánh P/E giảm. Còn lại: kỳ vọng tăng trưởng/tái cấu trúc mảng của CTCK chưa có trong dự phóng TTM + trung vị lịch sử; P/E lịch sử còn lỗi số cp sau quyền mua 42% (2026)"}
   VRE: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
         thesis: "DCF thận trọng có hệ thống: ROIC dài hạn = WACC (chưa duyệt đổi)"}
   CTD:
@@ -165,36 +281,8 @@ tickers:
     owner: "claude-de-xuat (cho phi duyet)"
     reviewed_on: 2026-10-02
     decision_ref: D49
-  GAS: {status: out_of_band_must_fix, owner: "claude-de-xuat (cho phi duyet)", reviewed_on: 2026-10-02, decision_ref: D49,
-        thesis: "+23% so với 10 CTCK, chưa xác định nguyên nhân — cần điều tra giả định giá dầu/biên"}
-  HT1:
-    status: out_of_band_must_fix
-    thesis: >-
-      EV/EBITDA theo bội số lịch sử cho +22% so với CTCK dù ROE qua chu kỳ ~7% thấp hơn chi phí
-      vốn (bẫy giá trị theo hồ sơ phản biện) — bội số lịch sử không phù hợp khi ROE < COE.
-    evidence: ["round2_workflow_20260929.json: synth.excluded[HT1]"]
-    owner: "claude-de-xuat (cho phi duyet)"
-    reviewed_on: 2026-10-02
-    decision_ref: D49
-  CTG:
-    status: out_of_band_must_fix
-    thesis: >-
-      Chi phí tín dụng chuẩn hóa = trung vị 3 năm 1,76% gồm các năm trích lập cao, trong khi TTM
-      0,96% → LN dự phóng thấp, −24% so với CTCK.
-    evidence: ["DECISIONS.md#D47"]
-    owner: "claude-de-xuat (cho phi duyet)"
-    reviewed_on: 2026-10-02
-    decision_ref: D49
-  VPB:
-    status: out_of_band_must_fix
-    thesis: >-
-      Chi phí tín dụng trung vị 4,53% (gồm giai đoạn FE Credit xấu 2022–2024) so với TTM 2,75% →
-      LN dự phóng thấp. Giá mục tiêu CTCK trong DB lập trước GDKHQ cổ tức CP 26% (24/09/2026), quy
-      đổi xong vẫn lệch ~−49%.
-    evidence: ["DECISIONS.md#D47", "config/corporate_actions.yaml#VPB"]
-    owner: "claude-de-xuat (cho phi duyet)"
-    reviewed_on: 2026-10-02
-    decision_ref: D49
+  # CTG, VPB: ĐÃ GỠ 19/10/2026 — gói NH s3 (chi phí tín dụng phai TTM → trung vị, ROE terminal hội tụ
+  # ngành) đưa vào band: CTG −22% → +0,6% (28/09) / +2,7% (19/10); VPB −38% → −2,7% / −2,7%.
   PHR:
     status: out_of_band_must_fix
     thesis: >-
@@ -205,23 +293,86 @@ tickers:
     reviewed_on: 2026-10-02
     decision_ref: D49
   MCH:
-    status: data_blocked
-    thesis: "Đồng thuận mỏng (2 CTCK trong 180 ngày) — median không đủ làm mốc đối chiếu."
-    evidence: ["consensus_view: n_brokers = 2"]
+    status: out_of_band_must_fix
+    thesis: >-
+      Mốc 28/09 nay n=3 CTCK (không còn mỏng): −19,2% → −20,8% sau fx2 (NOPAT terminal theo thuế suất biên
+      20% thay thuế hiệu dụng 12,0%: −2%); 20/10 −35,9% (n=3). Nguyên nhân phần lệch còn lại chưa tách (DCF
+      + P/E TTM, Compounder).
+    evidence: ["consensus_view: n_brokers = 3", "upgrade_notes/fx2_models.md"]
     owner: "claude-de-xuat (cho phi duyet)"
-    reviewed_on: 2026-10-02
+    reviewed_on: 2026-10-20
   SBT:
     status: data_blocked
     thesis: "Đồng thuận mỏng (1 CTCK trong 180 ngày) — median không đủ làm mốc đối chiếu."
     evidence: ["consensus_view: n_brokers = 1"]
     owner: "claude-de-xuat (cho phi duyet)"
     reviewed_on: 2026-10-02
-  VSC:
+  BWE:
     status: data_blocked
-    thesis: "Đồng thuận mỏng (2 CTCK trong 180 ngày) — median không đủ làm mốc đối chiếu."
-    evidence: ["consensus_view: n_brokers = 2"]
+    thesis: >-
+      Đồng thuận mỏng (2 CTCK). s4 đưa −2,9% → +25,2% (28/09), +24,6% (19/10): XDCB dở dang 2.038 tỷ cộng
+      theo sổ vào cầu nối (+9.267đ/cp, NPV = 0), loại CIP khỏi vốn vận hành (s2c 0,51 → 0,67: +3.663đ),
+      thuế hiệu dụng 15,0% → 11,6% (Σthuế/ΣLNTT 2023–2025: +2.224đ). Trọng số DCF 1,0 nên không có chân
+      bội số đối chiếu; CIP/vốn chủ DCF 13,5% < ngưỡng cip_share_review. fx1 (giữ dấu lợi ích thuế, mẫu số
+      loại lãi LD/LK): thuế 11,6% → 12,8%, +25,2% → +23,8% (28/09), +23,2% (20/10). fx2 (NOPAT terminal
+      theo thuế suất biên 20%): +23,8% → +14,7% (28/09), +14,2% (20/10) — vào band, vẫn chỉ 2 CTCK.
+    evidence: ["consensus_view: n_brokers = 2", "upgrade_notes/s4_dcf.md", "upgrade_notes/fx1_data_security.md",
+               "upgrade_notes/fx2_models.md"]
     owner: "claude-de-xuat (cho phi duyet)"
-    reviewed_on: 2026-10-02
+    reviewed_on: 2026-10-20
+  VSC:
+    status: out_of_band_must_fix
+    thesis: >-
+      s4: −37,6% → −21,3% (28/09, nay n=4 CTCK — không còn là đồng thuận mỏng): XDCB 1.464 tỷ cộng sổ
+      (+3.912đ/cp cả hai chân), thuế 25% → 21,2%. Còn lại: biên EBIT trung vị 4 năm 20,4% so TTM 24,8%
+      (chuẩn hoá ngược khi đang phục hồi). Dữ liệu cần rà: Q2/2026 XDCB 9 → 1.464 tỷ cùng TSCĐ hữu hình
+      1.192 → 2.346 tỷ trong một quý (nghi hợp nhất công ty con) — chưa đối chiếu BCTC gốc. fx1 (thuế hiệu
+      dụng loại lãi LD/LK khỏi mẫu số: 21,2% → 22,8%): −21,3% → −21,9% (28/09, n=4); mốc 20/10 −18,2% (n=4,
+      trong band) → gỡ khi mốc golden dời qua 20/10. fx2 (thuế terminal 20% < hiệu dụng 22,8%): −20,7%
+      (28/09), −17,0% (20/10). CĐKKS 30% VCSH mẹ trừ theo sổ (MINORITY_AT_BOOK_MATERIAL). r3b: golden kiểm
+      ở hai mốc — 28/09 −21,3% (ngoài band) vẫn cần mục này, 20/10 −17,7% (trong band, n=4).
+    evidence: ["consensus_view: n_brokers = 4", "upgrade_notes/s4_dcf.md", "upgrade_notes/fx1_data_security.md"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
+  # s5 (20/10/2026): đảo D39 — PC1/HDG/VCG (SOTP không có cổ phần niêm yết trong DB) chuyển sang raw_secondary
+  # của routing. HDG −4,2% (28/09) trong band. Hai mã dưới ngoài band, đề xuất của Claude chờ phi duyệt.
+  PC1:
+    status: out_of_band_must_fix
+    thesis: >-
+      EV/EBITDA hợp nhất: +20,3% (28/09, n=3), +21,2% (19/10, n=4). Bội số mục tiêu = trung vị 5 năm của
+      chính mã 6,65x trong khi thị trường đang trả 4,62x (EV hoạt động/EBITDA TTM). fx2: bội số TRAILING áp
+      lên EBITDA TTM 2.942 tỷ (cùng định nghĩa; trước: trung bình chồng kỳ 2.762 tỷ) → FV 30.191 → 33.108đ,
+      +31,9% (28/09, n=3), +33,0% (20/10, n=4). Lệch là cược bội số quay về trung vị lịch sử (6,65x vs 4,62x
+      hiện hành), không phải quan điểm có chủ ý. fx3: mới mở công bố (s5) mà lệch > 30% CTCK → hold trong
+      config/event_holds.yaml (MATERIAL_EVENT_HOLD) tới khi phi duyệt mục này; số đo fx3 không đổi (+33,0%, n=4).
+    evidence: ["upgrade_notes/s5_sotp.md#F4", "routing.json#PC1 note", "upgrade_notes/fx2_models.md",
+               "upgrade_notes/fx3_sotp_gate.md"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
+  VCG:
+    status: out_of_band_must_fix
+    thesis: >-
+      DCF hợp nhất (trọng số 1,0, không có chân bội số đối chiếu): +41,6% (28/09, n=4), +40,2% (19/10); thị
+      giá ngụ ý upside ~+80%. Nguồn chính: (1) biên EBIT trung vị 4 năm 8,9% (2023–TTM: 7,9/12,0/9,9/6,8%)
+      so với TTM 6,8% — dùng biên TTM thì FV 21.756đ (+12,7% so với 19.300đ); (2) tiền + đầu tư ngắn hạn
+      9.446 tỷ (gồm tiền thoái vốn 2025, thu nhập tài chính 3.766 tỷ) cộng nguyên ở cầu nối (+13.529đ/cp);
+      (3) XDCB dở dang 1.782 tỷ cộng sổ (s4, +2.552đ/cp) — chẩn đoán đo +23% trước s4. Ngược chiều: quỹ
+      đất BĐS ghi giá gốc không được định giá lại. fx1 (thuế 21,1% → 20,5%): +41,6% → +42,2% (28/09), +40,8%
+      (20/10). fx2 (thuế terminal 20%): +42,9% (28/09), +41,5% (20/10). fx3: mới mở công bố (s5), lệch > 30%
+      CTCK, upside +81,4% (20/10) / +101,2% (28/09) → hold trong config/event_holds.yaml tới khi phi duyệt.
+    evidence: ["upgrade_notes/s5_sotp.md#F4", "financials_quarterly VCG 2025: financial_income 3.766 tỷ",
+               "upgrade_notes/fx3_sotp_gate.md"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-20
+  EVF:
+    status: data_blocked
+    thesis: >-
+      Lần đầu có FV (19/10/2026: chuyển sang pipeline TCTD, RI + P/B lịch sử 0,96x) — trước đó lỗi
+      MISSING_FINANCIAL_INPUT. Đồng thuận chỉ 1 CTCK (NSI 09/04/2026, 17.900đ, 172 ngày ở mốc 28/09;
+      hết cửa sổ 180 ngày ngày 06/10; n = 0 ở mốc 19/10) → không đủ làm mốc. FV ≈ thị giá (−3%).
+    evidence: ["consensus_view: n_brokers = 1", "upgrade_notes/s2_financials.md#F1"]
+    owner: "claude-de-xuat (cho phi duyet)"
+    reviewed_on: 2026-10-19
 
 # ===========================================================================
 # CÒN LẠI ~40 mã ngoài band CHƯA khai báo -> MISSING_JUSTIFICATION.

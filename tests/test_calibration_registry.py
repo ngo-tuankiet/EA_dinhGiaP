@@ -42,27 +42,28 @@ class TestBangGovernance:
         assert govern("KHONGCOTRONGREGISTRY", "OUT_LOW", registry, TODAY)[0] == GOV_MISSING
 
     def test_ngoai_band_co_luan_diem_con_han(self, registry):
-        assert govern("SSI", "OUT_LOW", registry, TODAY)[0] == GOV_OK_JUSTIFIED
+        # VCI giữ luận điểm D26 (phi duyệt); SSI/HCM tách sang must_fix ở r3b (cơ chế P/B mới chờ duyệt).
+        assert govern("VCI", "OUT_LOW", registry, TODAY)[0] == GOV_OK_JUSTIFIED
 
     def test_luan_diem_het_han_thi_phai_ra_soat_lai(self, registry):
         """Giải trình CÓ HẠN — không miễn nhiễm vĩnh viễn."""
         muon = TODAY + datetime.timedelta(days=200)   # TTL 180 ngày
-        assert govern("SSI", "OUT_LOW", registry, muon)[0] == GOV_STALE
+        assert govern("VCI", "OUT_LOW", registry, muon)[0] == GOV_STALE
 
     def test_loi_da_thua_nhan_la_backlog(self, registry):
-        # MBB còn trong backlog sau D29 (ACB/VIB/OCB/BID đã vào band và được gỡ).
-        assert govern("MBB", "OUT_HIGH", registry, TODAY)[0] == GOV_KNOWN_DEFECT
+        # FRT còn trong backlog (HDB gỡ 20/10/2026 sau khi sửa lookahead số cp as_of — fx1).
+        assert govern("FRT", "OUT_LOW", registry, TODAY)[0] == GOV_KNOWN_DEFECT
 
     def test_thieu_du_lieu_khong_phai_loi_mo_hinh(self, registry):
         assert govern("NVL", "OUT_HIGH", registry, TODAY)[0] == GOV_DATA_BLOCKED
 
     def test_vao_band_roi_ma_con_khai_bao_thi_bao_don_registry(self, registry):
         """Chống registry mục nát: mã đã vào band mà vẫn còn entry -> nhắc xoá."""
-        assert govern("MBB", "IN_BAND", registry, TODAY)[0] == GOV_OBSOLETE
+        assert govern("FRT", "IN_BAND", registry, TODAY)[0] == GOV_OBSOLETE
 
     def test_khong_do_duoc_thi_khong_phan_xet(self, registry):
         for bs in ("NO_CONSENSUS", "ERROR"):
-            assert govern("MBB", bs, registry, TODAY)[0] == GOV_OK
+            assert govern("FRT", bs, registry, TODAY)[0] == GOV_OK
 
 
 class TestBand:

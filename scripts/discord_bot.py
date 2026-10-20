@@ -1,14 +1,27 @@
-import os
-import re
+"""Bot Discord chiều Discord → Python: định giá 1 mã VN100 và lệnh !baocao.
+
+Chỉ nhận lệnh trong DISCORD_CHANNEL_ID (.env); mọi thành viên kênh dùng được, trừ khi đặt
+DISCORD_OWNER_ID để khóa về 1 người. Gọi thẳng engine định giá
+(không cần FastAPI). Chạy nền bằng launchd: ~/Library/LaunchAgents/vn.antigravity-vn100.discord-bot.plist
+"""
 import asyncio
 import datetime
+import logging
+import os
+import re
+import sys
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import certifi
 import discord
-import httpx
-import logging
+from fastapi import HTTPException
+
 from valuation.config import settings
-from valuation.output.ai_insight import call_deepseek_sync
 from valuation.engine.flag_descriptions import describe_flags
+from valuation.output.ai_insight import call_deepseek_sync
 
 # Đảm bảo chứng chỉ SSL sử dụng Certifi bundle để tránh lỗi trên macOS
 os.environ["SSL_CERT_FILE"] = certifi.where()
@@ -23,10 +36,48 @@ client = discord.Client(intents=intents)
 
 # Đọc token và cấu hình từ Settings
 DISCORD_TOKEN = settings.discord_bot_token or os.getenv("DISCORD_BOT_TOKEN")
-FASTAPI_URL = "http://localhost:8000"
 
-# Chỉ định Channel ID kiểm thử
-TARGET_CHANNEL_ID = 1504370094787133533
+
+def _id(raw: str) -> int | None:
+    raw = (raw or "").strip()
+    return int(raw) if raw.isdigit() else None
+
+
+OWNER_ID = _id(settings.discord_owner_id)
+CHANNEL_ID = _id(settings.discord_channel_id)
+VN100: set[str] = set()  # nạp từ DB lúc khởi động; mã ngoài rổ bị bỏ qua
+
+
+def is_authorized(
+    author_id: int, author_is_bot: bool, channel_id: int, owner_id: int | None, allowed_channel: int | None
+) -> bool:
+    """Đúng kênh, không phải bot; nếu đặt owner_id thì chỉ người đó. Thiếu kênh = từ chối hết."""
+    if author_is_bot or allowed_channel is None or channel_id != allowed_channel:
+        return False
+    return owner_id is None or author_id == owner_id
+
+
+def load_universe() -> set[str]:
+    from valuation.db.models import Ticker
+    from valuation.db.session import SessionLocalRead
+
+    db = SessionLocalRead()
+    try:
+        return {t for (t,) in db.query(Ticker.ticker).filter(Ticker.is_vn100)}
+    finally:
+        db.close()
+
+
+def fetch_report(ticker: str) -> dict:
+    """Cùng engine thống nhất với Streamlit/batch, gọi trực tiếp thay vì qua FastAPI."""
+    from valuation.api.routes.valuation import unified_report
+    from valuation.db.session import SessionLocalRead
+
+    db = SessionLocalRead()
+    try:
+        return unified_report(ticker, db)
+    finally:
+        db.close()
 
 _FLAG_ICON = {"error": "❌", "warning": "⚠️", "info": "ℹ️"}
 
@@ -111,7 +162,7 @@ async def on_ready():
     logger.info(f"Bot đã đăng nhập thành công dưới tên: {client.user}")
 
 
-def parse_ticker_from_message(content: str, bot_id: int) -> str:
+def parse_ticker_from_message(content: str, bot_id: int) -> str | None:
     """Phân tích tin nhắn để trích xuất mã cổ phiếu bằng nhiều cú pháp khác nhau"""
     content_strip = content.strip()
     if not content_strip:
@@ -165,53 +216,32 @@ def parse_ticker_from_message(content: str, bot_id: int) -> str:
 
     return None
 
-async def handle_ingest_command(message, content_strip: str):
-    """Xử lý lệnh !ingest <TICKER> [data_types phân tách bằng dấu phẩy]"""
-    parts = content_strip.split()
-    if len(parts) < 2:
-        await message.channel.send("⚠️ Cú pháp: `!ingest <TICKER> [prices,financials]`")
-        return
-    ticker = parts[1].upper().strip()
-    data_types = parts[2].split(",") if len(parts) >= 3 else ["prices", "financials"]
+def _flags_block(flag_infos: list) -> str:
+    if not flag_infos:
+        return "✅ Không có cảnh báo — dữ liệu đạt chuẩn kiểm tra."
+    lines = [f"{_FLAG_ICON.get(f['level'], '•')} {f['message']}" for f in flag_infos[:4]]
+    if len(flag_infos) > 4:
+        lines.append(f"... và {len(flag_infos) - 4} cảnh báo khác")
+    return "\n".join(lines)
 
-    temp_msg = await message.channel.send(f"⏳ Đang kích hoạt ingest dữ liệu cho **{ticker}** ({', '.join(data_types)})...")
+
+def _footer() -> str:
+    now = datetime.datetime.now(ZoneInfo("Asia/Ho_Chi_Minh"))
+    return f"Hệ thống định giá tự động VN100 | {now:%d/%m/%Y %H:%M}"
+
+
+async def handle_report_command(message):
+    """!baocao — dựng báo cáo sáng ngay từ dữ liệu đang có (không cập nhật giá, không ghi lịch sử)."""
+    from valuation.services.daily_report import run
+
+    temp_msg = await message.channel.send("⏳ Đang dựng báo cáo từ dữ liệu hiện có...")
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client_http:
-            response = await client_http.post(
-                f"{FASTAPI_URL}/ingest/ingest/",
-                json={"ticker": ticker, "data_types": data_types, "channel_id": message.channel.id}
-            )
+        await asyncio.to_thread(run, refresh=False, save=False, channel_id=message.channel.id)
+    except Exception as e:  # noqa: BLE001 — báo lỗi ngay trong kênh thay vì chết im lặng
+        logger.error(f"Error building daily report: {e}")
+        await message.channel.send(f"❌ Không dựng được báo cáo: {type(e).__name__}: {e}")
+    finally:
         await temp_msg.delete()
-        if response.status_code == 200:
-            await message.channel.send(f"✅ Đã kích hoạt ingest cho **{ticker}** (chạy nền, sẽ báo cáo tại đây khi hoàn tất).")
-        else:
-            await message.channel.send(f"❌ Lỗi kích hoạt ingest cho {ticker} (Mã lỗi API: {response.status_code})")
-    except Exception as e:
-        logger.error(f"Error triggering ingest for {ticker}: {e}")
-        await temp_msg.delete()
-        await message.channel.send(f"❌ Có lỗi xảy ra khi kích hoạt ingest: {str(e)}")
-
-
-async def handle_batch_command(message):
-    """Xử lý lệnh !batch — chạy định giá batch toàn bộ rổ VN100"""
-    temp_msg = await message.channel.send("⏳ Đang kích hoạt batch định giá toàn bộ VN100 (chạy nền, sẽ báo kết quả khi xong)...")
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client_http:
-            response = await client_http.post(
-                f"{FASTAPI_URL}/orchestration/run-batch-vn100",
-                json={"channel_id": message.channel.id}
-            )
-        await temp_msg.delete()
-        if response.status_code == 200:
-            await message.channel.send("✅ Batch VN100 đã bắt đầu chạy nền. Kết quả sẽ được báo cáo tại đây khi hoàn tất (vài phút).")
-        elif response.status_code == 409:
-            await message.channel.send("⚠️ Batch VN100 đang chạy rồi, vui lòng đợi hoàn tất trước khi chạy lại.")
-        else:
-            await message.channel.send(f"❌ Lỗi kích hoạt batch VN100 (Mã lỗi API: {response.status_code})")
-    except Exception as e:
-        logger.error(f"Error triggering VN100 batch: {e}")
-        await temp_msg.delete()
-        await message.channel.send(f"❌ Có lỗi xảy ra khi kích hoạt batch: {str(e)}")
 
 
 @client.event
@@ -219,43 +249,28 @@ async def on_message(message):
     # Tránh trường hợp bot tự trả lời chính mình
     if message.author == client.user:
         return
-
-    content_strip = message.content.strip()
-
-    # Lệnh điều khiển tác vụ nền: ingest dữ liệu 1 mã
-    if content_strip.startswith("!ingest"):
-        await handle_ingest_command(message, content_strip)
+    if not is_authorized(message.author.id, message.author.bot, message.channel.id, OWNER_ID, CHANNEL_ID):
         return
 
-    # Lệnh điều khiển tác vụ nền: chạy batch định giá toàn VN100
-    if content_strip.startswith("!batch"):
-        await handle_batch_command(message)
+    if message.content.strip().startswith("!baocao"):
+        await handle_report_command(message)
         return
 
-    # Phân tích xem tin nhắn có chứa mã cổ phiếu yêu cầu định giá không
+    # Phân tích xem tin nhắn có chứa mã cổ phiếu không; chỉ nhận mã thuộc VN100 (chống spam/injection)
     ticker = parse_ticker_from_message(message.content, client.user.id)
-    if not ticker:
+    if ticker not in VN100:
         return
-        
-    temp_msg = await message.channel.send(f"⏳ Đang thực hiện định giá và phân tích AI cho cổ phiếu **{ticker}**...")
-    
-    try:
-        # Gọi endpoint THỐNG NHẤT (cùng engine với Streamlit + batch → cùng số liệu, cùng giá live)
-        api_endpoint = f"{FASTAPI_URL}/revalue/valuation/report/{ticker}"
-        async with httpx.AsyncClient(timeout=30.0) as client_http:
-            response = await client_http.get(api_endpoint)
 
-        if response.status_code != 200:
+    temp_msg = await message.channel.send(f"⏳ Đang thực hiện định giá và phân tích AI cho cổ phiếu **{ticker}**...")
+
+    try:
+        try:
+            res = await asyncio.to_thread(fetch_report, ticker)
+        except HTTPException as e:
             await temp_msg.delete()
-            detail = ""
-            try:
-                detail = f" — {response.json().get('detail','')}"
-            except Exception:
-                pass
-            await message.channel.send(f"❌ Lỗi khi định giá {ticker} (Mã lỗi API: {response.status_code}){detail}")
+            await message.channel.send(f"❌ Lỗi khi định giá {ticker} (Mã lỗi: {e.status_code}) — {e.detail}")
             return
 
-        res = response.json()
         curr_price = res.get("current_price", 0.0) or 0.0
         blended_fv = res.get("fair_value", 0.0) or 0.0
         intrinsic_fv = res.get("intrinsic_fv")
@@ -268,6 +283,23 @@ async def on_message(message):
         upside = (res.get("upside") or 0.0) * 100
 
         flag_infos = describe_flags(qc_flags)
+
+        if not res.get("publication_allowed", True):
+            # Cổng kiểm chứng chặn (giống Streamlit): không công bố FV/upside, không tốn lời gọi DeepSeek.
+            embed = discord.Embed(
+                title=f"⛔ {ticker}: chưa đủ điều kiện công bố giá trị hợp lý",
+                description=(
+                    f"**💵 Giá thị trường:** {curr_price:,.0f} VND\n\n"
+                    "Dữ liệu đầu vào hoặc kết quả mô hình chưa qua cổng kiểm chứng, nên hệ thống "
+                    "không công bố giá trị hợp lý, upside và nhận định AI cho mã này.\n\n"
+                    f"**🚦 Lý do:**\n{_flags_block(flag_infos)}"
+                ),
+                color=0x95A5A6,
+            )
+            embed.set_footer(text=_footer())
+            await temp_msg.delete()
+            await message.channel.send(embed=embed)
+            return
 
         # Gọi DeepSeek lấy nhận định (chạy trong thread riêng vì call_deepseek_sync là hàm đồng bộ)
         prompt = build_ticker_report_prompt(
@@ -284,20 +316,12 @@ async def on_message(message):
 
         rec_line = f"\n**🏁 Khuyến nghị hệ thống:** {recommendation}" if recommendation else ""
 
-        if flag_infos:
-            flags_lines = [f"{_FLAG_ICON.get(f['level'], '•')} {f['message']}" for f in flag_infos[:4]]
-            if len(flag_infos) > 4:
-                flags_lines.append(f"... và {len(flag_infos) - 4} cảnh báo khác")
-            flags_block = "\n".join(flags_lines)
-        else:
-            flags_block = "✅ Không có cảnh báo — dữ liệu đạt chuẩn kiểm tra."
-
         header = (
             f"**💵 Giá thị trường:** {curr_price:,.0f} VND\n"
             f"{fv_line}\n"
             f"**📈 Upside:** {upside:+.1f}%\n"
             f"**🧮 Phương pháp:** {method_label}{rec_line}\n\n"
-            f"**🚦 Cảnh báo chất lượng:**\n{flags_block}\n\n"
+            f"**🚦 Cảnh báo chất lượng:**\n{_flags_block(flag_infos)}\n\n"
             f"**💡 Nhận định:**\n{ai_report}"
         )
         # Giới hạn description embed 4096 ký tự
@@ -310,18 +334,23 @@ async def on_message(message):
             description=header,
             color=color
         )
-        embed.set_footer(text=f"Hệ thống định giá tự động VN100 | {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        embed.set_footer(text=_footer())
 
         await temp_msg.delete()
         await message.channel.send(embed=embed)
-        
+
     except Exception as e:
         logger.error(f"Error processing command for {ticker}: {e}")
         await temp_msg.delete()
-        await message.channel.send(f"❌ Có lỗi xảy ra trong quá trình xử lý lệnh: {str(e)}")
+        await message.channel.send(f"❌ Có lỗi xảy ra trong quá trình xử lý lệnh: {e!s}")
 
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
         logger.error("Vui lòng cấu hình DISCORD_BOT_TOKEN trong file .env hoặc biến môi trường.")
-    else:
-        client.run(DISCORD_TOKEN)
+        sys.exit(1)
+    if CHANNEL_ID is None:
+        logger.error("Cần DISCORD_CHANNEL_ID (dạng số) trong .env — bot chỉ nhận lệnh trong 1 kênh.")
+        sys.exit(1)
+    VN100.update(load_universe())
+    logger.info(f"Đã nạp {len(VN100)} mã VN100; kênh {CHANNEL_ID}; người dùng: {OWNER_ID or 'mọi thành viên'}")
+    client.run(DISCORD_TOKEN, log_handler=None)

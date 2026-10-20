@@ -76,7 +76,9 @@ def render_input_assumptions(company: Company | CompanyBank):
     st.markdown(f"**Chi phí sử dụng vốn cổ phần (COE - Re):** `{coe:.2%}`")
 
     if not is_bank:
-        col4, col5 = st.columns(2)
+        assert isinstance(company, Company)  # thu hẹp kiểu cho mypy (is_bank đã xác định)
+        assumptions = company.assumptions
+        col4, col5, col5b = st.columns(3)
         with col4:
             cod = st.number_input(
                 "Chi phí nợ vay (Rd):",
@@ -95,10 +97,37 @@ def render_input_assumptions(company: Company | CompanyBank):
                 max_value=0.50,
                 step=0.01,
                 format="%.2f",
-                help="Thuế suất thuế thu nhập doanh nghiệp áp dụng.",
+                help="Thuế hiệu dụng giai đoạn dự phóng (năm 1–5, gồm ưu đãi có thời hạn) — áp cho NOPAT/LN "
+                "các năm dự phóng; giá trị vĩnh viễn dùng ô thuế terminal bên cạnh.",
             )
         assumptions.cost_of_debt = cod
         assumptions.tax_rate = tax
+        with col5b:
+            from valuation.engine.wacc import marginal_tax_rate
+
+            # Mặc định theo config: thuế biên (sector_tax_rates.default) hoặc thuế hiệu dụng nếu terminal_tax_mode
+            # = effective. Giữ None khi analyst không đổi để config đổi thì mặc định đổi theo (như rnav_wacc).
+            term_default = marginal_tax_rate(None, tax)
+            term_shown = (
+                assumptions.terminal_tax_rate
+                if assumptions.terminal_tax_rate is not None
+                else term_default
+            )
+            term_tax = st.number_input(
+                "Thuế terminal (vĩnh viễn):",
+                value=float(term_shown),
+                min_value=0.0,
+                max_value=0.50,
+                step=0.01,
+                format="%.2f",
+                help="Thuế suất biên cho NOPAT vĩnh viễn sau năm 5 và lá chắn thuế nợ trong WACC (Damodaran). "
+                "Mặc định thuế TNDN phổ thông; chỉ nhập mức ưu đãi khi ưu đãi KHÔNG có thời hạn theo luật.",
+            )
+        if (
+            assumptions.terminal_tax_rate is not None
+            or abs(term_tax - term_default) > 5e-5
+        ):
+            assumptions.terminal_tax_rate = term_tax
 
         # Cập nhật WACC ước lượng ở cấu trúc vốn hiện tại
         E = company.historical_bs[-1].total_equity
@@ -106,9 +135,9 @@ def render_input_assumptions(company: Company | CompanyBank):
             company.historical_bs[-1].short_term_debt
             + company.historical_bs[-1].long_term_debt
         )
-        from valuation.engine.wacc import compute_wacc
+        from valuation.engine.wacc import compute_wacc, wacc_tax_rate
 
-        wacc_est = compute_wacc(coe, cod, E, D, tax)
+        wacc_est = compute_wacc(coe, cod, E, D, wacc_tax_rate(assumptions))
         st.markdown(f"**Ước lượng WACC (ở cấu trúc vốn lịch sử):** `{wacc_est:.2%}`")
 
     st.subheader("2. Giả định dự phóng 5 năm tiếp theo")
@@ -117,6 +146,14 @@ def render_input_assumptions(company: Company | CompanyBank):
     forecast_years = [company.historical_is[-1].year + i for i in range(1, 6)]
 
     if is_bank:
+        assert isinstance(company, CompanyBank)  # thu hẹp kiểu cho mypy (is_bank đã xác định)
+        if company.assumptions.driver_base is None:
+            # Ảnh chụp driver gốc (repo đã đặt khi dựng; thiếu thì chụp trước khi analyst sửa) — forecast_bank
+            # tính dòng cân phai ROE từ driver gốc và cộng phần analyst sửa vào LN (r4a).
+            company.assumptions.driver_base = {
+                k: list(getattr(company.assumptions, k))
+                for k in ("credit_growth", "nim", "cir", "credit_cost")
+            }
         schedule_data = {
             "Năm": forecast_years,
             "Tăng trưởng tín dụng (%)": [
@@ -169,6 +206,22 @@ def render_input_assumptions(company: Company | CompanyBank):
         assumptions.credit_cost = [
             float(val) / 100.0 for val in edited_schedule["Credit Cost (%)"]
         ]
+
+        # Năm chuyển tiếp: LN phai về ROE terminal bằng dòng cân tính từ driver gốc; phần analyst sửa driver cộng
+        # thẳng vào LN (forecast_bank) nên mọi ô driver đều có tác dụng, đúng dấu (AGENTS §7).
+        from valuation.engine.forecast_bank import (
+            fade_plug_share,
+            forecast_bank_financials,
+        )
+
+        _share = fade_plug_share(
+            forecast_bank_financials(company), assumptions.tax_rate
+        )
+        if _share:
+            st.caption(
+                f"LN năm {forecast_years[-1]}: {_share:.0%} do dòng cân phai ROE về ROE terminal (tính từ "
+                "driver gốc; phần driver bạn sửa được cộng thêm vào LN)."
+            )
     else:
         schedule_data = {
             "Năm": forecast_years,
@@ -279,13 +332,13 @@ def render_input_assumptions(company: Company | CompanyBank):
     with col7:
         if is_bank:
             sus_roe = st.number_input(
-                "ROE bền vững vĩnh viễn:",
+                "ROE bền vững riêng (năm 5):",
                 value=float(assumptions.sustainable_roe or 0.18),
                 min_value=0.01,
                 max_value=0.50,
                 step=0.01,
                 format="%.2f",
-                help="Mức Lợi nhuận trên Vốn chủ sở hữu duy trì trong dài hạn ở giai đoạn bão hòa.",
+                help="ROE năm 5 của dự phóng chuẩn hóa. ROE terminal = mức này hội tụ về ROE ngành theo λ (bên dưới).",
             )
             assumptions.sustainable_roe = sus_roe
         else:
@@ -338,6 +391,31 @@ def render_input_assumptions(company: Company | CompanyBank):
             step=0.05,
         )
         assumptions.dividend_payout_ratio = payout
+        # ROE terminal = ROE bền vững + λ·(ROE ngành − ROE bền vững) (Damodaran): máy đặt base case,
+        # analyst chỉnh được đích và mức hội tụ (AGENTS §7).
+        col_ind, col_lam = st.columns(2)
+        with col_ind:
+            if assumptions.industry_roe is not None:
+                assumptions.industry_roe = st.number_input(
+                    "ROE trung bình ngành (đích hội tụ):",
+                    value=float(assumptions.industry_roe),
+                    min_value=0.0,
+                    max_value=0.50,
+                    step=0.005,
+                    format="%.4f",
+                    help="Trung vị các NH cùng nhóm của ROE 3 năm tài chính gần nhất.",
+                )
+            else:
+                st.caption("Nhóm ngành chưa đủ mã để tính ROE ngành — ROE terminal = ROE bền vững.")
+        with col_lam:
+            assumptions.roe_convergence = st.slider(
+                "Mức hội tụ về ROE ngành (λ):",
+                0.0,
+                1.0,
+                float(assumptions.roe_convergence),
+                step=0.05,
+                help="1 = ROE terminal bằng ROE ngành (chuẩn giai đoạn ổn định); 0 = giữ ROE riêng vĩnh viễn.",
+            )
 
     if primary_method in ["RNAV", "SOTP"]:
         st.subheader("4. Tham số Khối Dự án & Trợ lý AI Bóc tách")
@@ -345,19 +423,35 @@ def render_input_assumptions(company: Company | CompanyBank):
         col_rnav1, col_rnav2 = st.columns(2)
         with col_rnav1:
             if primary_method == "RNAV":
+                from valuation.engine.models.rnav import default_project_rate
+
+                # Mặc định theo config proxy_valuation.rnav_project_discount_rate (WACC: dòng tiền dự án chưa trừ nợ).
+                coe = default_project_rate(company)
                 rnav_wacc = st.number_input(
-                    "WACC áp dụng cho dòng tiền dự án (RNAV):",
-                    value=float(assumptions.rnav_wacc),
+                    "Suất chiết khấu dòng tiền dự án (RNAV, mặc định = WACC — dòng tiền trước tài trợ):",
+                    value=float(assumptions.rnav_wacc if assumptions.rnav_wacc is not None else coe),
                     min_value=0.01,
                     max_value=0.30,
                     step=0.01,
                     format="%.4f",
                 )
-                assumptions.rnav_wacc = rnav_wacc
+                # Giữ None (= theo mặc định config) khi analyst không đổi, để WACC/COE đổi thì suất chiết khấu đổi theo.
+                if assumptions.rnav_wacc is not None or abs(rnav_wacc - coe) > 5e-5:
+                    assumptions.rnav_wacc = rnav_wacc
+                assumptions.rnav_revaluation_premium = st.number_input(
+                    "Premium đánh giá lại tồn kho + BĐS đầu tư (proxy RNAV):",
+                    value=float(assumptions.rnav_revaluation_premium),
+                    min_value=0.0,
+                    max_value=2.0,
+                    step=0.05,
+                    format="%.2f",
+                    help="Giả định nội bộ, chưa có nguồn (config proxy_valuation.rnav_land_premium); chỉ dùng "
+                    "khi chưa nhập dự án. Thặng dư trừ thuế TNDN rồi mới trừ chiết khấu RNAV.",
+                )
         with col_rnav2:
             if primary_method == "RNAV":
                 rnav_discount = st.number_input(
-                    "Tỷ lệ chiết khấu Tập đoàn (RNAV Discount):",
+                    "Chiết khấu phần đánh giá lại (RNAV Discount, không áp lên VCSH sổ sách):",
                     value=float(assumptions.rnav_discount),
                     min_value=0.0,
                     max_value=0.80,
@@ -427,6 +521,13 @@ def render_input_assumptions(company: Company | CompanyBank):
             if current_projects:
                 st.write("**Danh sách Dự án (Có thể chỉnh sửa):**")
                 df_proj = pd.DataFrame(current_projects)
+                if "gia_tri_so_sach_rong_ty" not in df_proj:
+                    df_proj["gia_tri_so_sach_rong_ty"] = None
+                st.caption(
+                    "Bắt buộc mỗi dự án: diện tích sàn thương phẩm còn lại, giá bán, chi phí toàn bộ /m2, "
+                    "ty_le_so_huu (%) và gia_tri_so_sach_rong_ty (tỷ đồng: tồn kho/XDCB/BĐS đầu tư của dự án − "
+                    "tiền khách đã trả trước). Thiếu → quay về proxy (bị chặn công bố)."
+                )
                 edited_proj = st.data_editor(
                     df_proj, num_rows="dynamic", width="stretch"
                 )
@@ -439,6 +540,13 @@ def render_input_assumptions(company: Company | CompanyBank):
             if current_segments:
                 st.write("**Danh sách Mảng kinh doanh (Có thể chỉnh sửa):**")
                 df_seg = pd.DataFrame(current_segments)
+                for col in ("hop_nhat", "no_vay_rong_ty", "cdkks_ty"):
+                    if col not in df_seg:
+                        df_seg[col] = None
+                st.caption(
+                    "Mảng Equity: hop_nhat = True/False. Công ty con hợp nhất phải nhập no_vay_rong_ty (nợ vay ròng "
+                    "100% của nó) và cdkks_ty (CĐKKS của nó, tỷ đồng) để không trừ nợ/CĐKKS hai lần."
+                )
                 edited_seg = st.data_editor(df_seg, num_rows="dynamic", width="stretch")
                 assumptions.sotp_segments = edited_seg.to_dict("records")
 
@@ -468,6 +576,7 @@ def render_input_assumptions(company: Company | CompanyBank):
                     "gia_boi_thuong_vnd_m2",
                     "ty_le_so_huu",
                     "nam_thu_tien",
+                    "gia_tri_so_sach_ty",
                 ],
             )
             if land_projects
@@ -478,6 +587,7 @@ def render_input_assumptions(company: Company | CompanyBank):
                     "gia_boi_thuong_vnd_m2",
                     "ty_le_so_huu",
                     "nam_thu_tien",
+                    "gia_tri_so_sach_ty",
                 ]
             )
         )
@@ -498,6 +608,9 @@ def render_input_assumptions(company: Company | CompanyBank):
                 ),
                 "nam_thu_tien": st.column_config.NumberColumn(
                     "Năm dự kiến thu tiền", min_value=2024, max_value=2050, step=1
+                ),
+                "gia_tri_so_sach_ty": st.column_config.NumberColumn(
+                    "Giá sổ đất trên BCĐKT (tỷ đồng, 0 nếu không ghi)", min_value=0.0
                 ),
             },
             key=f"land_bank_editor_{company.ticker}",

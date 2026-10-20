@@ -47,6 +47,7 @@ def run_weekly_auto_update(
         .all()
     )
     tickers = [t[0] for t in tickers_query]
+    vn100 = set(tickers)
 
     if max_tickers and max_tickers > 0:
         tickers = tickers[:max_tickers]
@@ -107,6 +108,29 @@ def run_weekly_auto_update(
     if vni["prices"]["status"] != "UPDATED":
         logger.warning("Không cập nhật được VNINDEX: %s", vni["prices"])
 
+    # Công ty con niêm yết ngoài VN100 khai trong config/sotp_holdings.yaml cũng is_vn100=0: không làm mới
+    # thì giá cũ → SOTP_HOLDINGS_STALE chặn tập đoàn mẹ. Ingest với is_vn100=False (không đổi rổ).
+    from valuation.config import sotp_holding_tickers
+
+    subs = sorted(sotp_holding_tickers() - vn100)
+    sotp_subs: dict[str, str] = {}
+    for sub in subs:
+        try:
+            sub_result = run_ingest(
+                sub,
+                data_types=["prices", "financials"],
+                incremental=True,
+                include_yearly=sub not in have_financials,
+                include_market_flows=False,
+                is_vn100=False,
+            )
+            sotp_subs[sub] = sub_result["status"]
+        except Exception as e:  # noqa: BLE001 — cô lập từng mã như vòng VN100; lỗi ghi log + FAILED trong kết quả
+            logger.error(f"Lỗi cập nhật công ty con SOTP {sub}: {e}")
+            sotp_subs[sub] = "FAILED"
+        if sotp_subs[sub] != "SUCCESS":
+            logger.warning("Cập nhật công ty con SOTP %s: %s", sub, sotp_subs[sub])
+
     # Sự kiện cổ tức/quyền trước đây chỉ làm mới khi mở từng mã → 85/100 mã đứng ở 30/08 và lịch
     # quyền VN100 thiếu các đợt công bố mới. Theo TTL nên mã vừa kiểm tra không gọi lại nguồn.
     if db_write is not None:
@@ -117,19 +141,24 @@ def run_weekly_auto_update(
             logger.warning("Cập nhật sự kiện cổ tức/quyền lỗi %s mã: %s", ca["error"], ca)
 
     consensus_summary = ", ".join(f"{k}={v}" for k, v in consensus_counts.items())
+    # BCTC/giá công ty con SOTP đứng yên làm lệch kỳ với tập đoàn mẹ → không được báo SUCCESS tổng.
+    subs_bad = sorted(sub for sub, status in sotp_subs.items() if status != "SUCCESS")
     summary_msg = (
         f"Hoàn tất cập nhật hàng tuần: {success_count}/{total} mã đầy đủ, "
         f"{partial_count} mã một phần, {fail_count} mã thất bại. "
+        f"Công ty con SOTP chưa cập nhật đủ: {len(subs_bad)}/{len(sotp_subs)}"
+        f"{' (' + ', '.join(subs_bad) + ')' if subs_bad else ''}. "
         f"Khuyến nghị CTCK thu được: {consensus_summary}."
     )
     logger.info(summary_msg)
 
     return {
-        "status": "SUCCESS" if not partial_count and not fail_count else "PARTIAL",
+        "status": "SUCCESS" if not (partial_count or fail_count or subs_bad) else "PARTIAL",
         "total": total,
         "success_count": success_count,
         "partial_count": partial_count,
         "fail_count": fail_count,
         "consensus": {**consensus_counts, "errors": consensus_errors},
+        "sotp_subs": sotp_subs,
         "message": summary_msg,
     }

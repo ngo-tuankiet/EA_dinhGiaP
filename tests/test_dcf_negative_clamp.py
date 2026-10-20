@@ -34,6 +34,8 @@ def test_negative_equity_clamped_to_zero_and_flagged():
     res = m.perform_valuation()
     assert res["blended_fair_value_per_share"] == 0.0, "giá âm phải bị chặn về 0"
     assert "NEGATIVE_EQUITY_VALUE_DCF" in m.valuation_warnings
+    # D61: nhánh DCF âm → không công bố, kể cả khi trung bình với bội số ra dương.
+    assert "NEGATIVE_DCF_LEG" in m.valuation_warnings and res["not_rated"]
 
 
 def test_normal_case_not_flagged():

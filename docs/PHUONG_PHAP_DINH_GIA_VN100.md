@@ -10,6 +10,14 @@
 **Ngày xuất báo cáo:** 2026-07-02
 **Tổng số mã trong hệ thống:** 101 (không tính VNINDEX — là chỉ số, không phải cổ phiếu)
 
+> **Lưu ý (20/10/2026): bảng dưới là ảnh chụp ngày 02/07/2026, đã cũ.** Nguồn sự thật hiện hành là
+> `valuation/config/routing.json` + DECISIONS.md. Thay đổi chính từ sau ngày chụp:
+> - D62: trọng số DCF lấy theo `weight_dcf` trong routing.json (không còn cố định 50/50).
+> - D66: PC1 → EV/EBITDA; HDG, VCG → DCF/FCFF; SIP → DCF/FCFF 0,5 + EV/EBITDA 0,5 (đang hold);
+>   EVF → RI 0,5 + P/B 0,5 như ngân hàng. VIC, MSN, GEX, REE, TCH chạy SOTP theo thị giá công ty con niêm yết
+>   (`config/sotp_holdings.yaml`, chiết khấu holding 10%) — không còn proxy, nhưng chặn công bố tới khi người
+>   dùng duyệt tỷ lệ. Các mã RNAV/SOTP còn lại vẫn là proxy (`VALUATION_PROXY`).
+
 ---
 
 ## 1. Tổng quan phương pháp đang dùng

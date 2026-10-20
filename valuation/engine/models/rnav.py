@@ -1,17 +1,36 @@
 import datetime
 from typing import Dict, Any
-from .base import BaseValuationModel
+from .base import BaseValuationModel, input_number
 from valuation.models.financials import Company
 from valuation.config import load_defaults
 
 
+def default_project_rate(company: Company) -> float:
+    """Suất chiết khấu mặc định cho dòng tiền dự án RNAV theo config proxy_valuation.rnav_project_discount_rate:
+    'wacc' (mặc định) — dòng tiền dự án là dòng tiền TRƯỚC tài trợ (nợ vay dự án nằm trong VCSH mẹ hợp nhất) nên
+    đi cặp WACC (Damodaran); 'coe' — cách cũ s6."""
+    a = company.assumptions
+    if load_defaults()["proxy_valuation"]["rnav_project_discount_rate"] == "coe":
+        return a.cost_of_equity or (a.risk_free_rate + a.beta * a.erp)
+    from valuation.engine.wacc import company_wacc
+
+    return company_wacc(company)
+
+
 class RNAVValuationModel(BaseValuationModel):
     """
-    RNAV (Revalued Net Asset Value) cho Bất động sản.
+    RNAV (Revalued Net Asset Value) cho Bất động sản — đẳng thức NAV điều chỉnh (CFA asset-based;
+    Damodaran, BĐS đang phát triển định giá theo DCF dự án cộng tài sản ròng ngoài dự án):
 
-    Phiên bản MỚI: 
-    Nếu có rnav_projects (AI bóc tách), sử dụng mô hình DCF để chiết khấu dòng tiền từng dự án.
-    Nếu không có, fallback về định giá lại HÀNG TỒN KHO & BĐS ĐẦU TƯ (PROXY).
+        NAV = VCSH mẹ + phần đánh giá lại sau thuế × (1 − rnav_discount)
+
+    VCSH mẹ đã chứa MỌI tài sản ròng ngoài dự án (tiền, phải thu, đầu tư, nợ vay, tiền khách trả trước,
+    CĐKKS đã loại). Chiết khấu chỉ áp lên phần đánh giá lại (ước lượng), không áp lên VCSH sổ sách
+    (đã kiểm toán) — xem DECISIONS.md (điều tra 2026-07).
+
+    - AI_RNAV_MODE (rnav_projects đủ đầu vào): đánh giá lại = Σ sở hữu × [PV(dòng tiền dự án còn lại sau
+      thuế) − giá sổ ròng dự án].
+    - PROXY (không có/thiếu đầu vào dự án): đánh giá lại = (tồn kho + BĐS đầu tư) × premium × (1 − thuế).
     """
 
     def __init__(self, ticker: str, current_financials: Dict[str, Any], assumptions: Dict[str, Any]):
@@ -21,130 +40,99 @@ class RNAVValuationModel(BaseValuationModel):
     @classmethod
     def from_pydantic(cls, company: Company) -> "RNAVValuationModel":
         bs = company.historical_bs[-1]
-        cfg = load_defaults().get("proxy_valuation", {})
+        a = company.assumptions
         cf_dict = {
             'total_equity': bs.parent_equity * 1e9,
-            'cash_and_equivalents': bs.cash_and_equivalents * 1e9,
-            'total_debt': (bs.short_term_debt + bs.long_term_debt) * 1e9,
-            'minority_interest': getattr(bs, 'minority_interest', 0.0) * 1e9,
             'inventory': bs.inventory * 1e9,
-            'investment_property': bs.other_long_term_assets * 1e9,
+            'investment_property': bs.investment_property * 1e9,
             'shares_outstanding': company.shares_outstanding * 1e6,
             'current_price': company.current_price,
         }
-        
-        # WACC: Có thể lấy từ WACC tổng của cty, tạm dùng chi phí vốn cổ phần hoặc rnav_wacc
-        wacc_default = getattr(company.assumptions, 'cost_of_equity', 0.11)
-        if wacc_default is None:
-            wacc_default = 0.11
-            
         assumptions = {
-            'rnav_land_premium': getattr(company.assumptions, 'rnav_revaluation_premium', cfg.get('rnav_land_premium', 0.30)),
-            'rnav_discount': getattr(company.assumptions, 'rnav_discount', 0.45), # analyst nhập
-            'rnav_wacc': getattr(company.assumptions, 'rnav_wacc', wacc_default), # analyst nhập
-            'rnav_projects': getattr(company.assumptions, 'rnav_projects', [])
+            'rnav_land_premium': a.rnav_revaluation_premium,
+            'rnav_discount': a.rnav_discount,
+            'rnav_wacc': a.rnav_wacc if a.rnav_wacc is not None else default_project_rate(company),
+            # Thuế phổ thông, không dùng thuế hiệu dụng: thu nhập chuyển nhượng BĐS không hưởng ưu đãi, và
+            # thuế hiệu dụng bị méo bởi lãi LDLK sau thuế (BCM 8,9%) hoặc chi phí không khấu trừ (kẹp 25%).
+            'tax_rate': float(load_defaults()["sector_tax_rates"]["default"]),
+            'rnav_projects': a.rnav_projects or [],
         }
         return cls(company.ticker, cf_dict, assumptions)
+
+    @staticmethod
+    def project_revaluation(projects, wacc: float, tax: float, current_year: int):
+        """(Σ sở hữu × [PV(dòng tiền còn lại sau thuế) − giá sổ ròng] — đồng, [trường thiếu]).
+
+        Mỗi dự án (phần CHƯA ghi nhận doanh thu): R = diện tích × giá bán, C = diện tích × chi phí toàn bộ,
+        B = giá sổ ròng (tồn kho/XDCB/BĐS đầu tư của dự án − tiền khách đã trả trước). Tiền còn thu − chi phí
+        còn lại = (R − C) + B và thuế = t × (R − C), nên dòng tiền còn lại = (R − C)(1 − t) + B, chia đều từ
+        năm mở bán tới năm bàn giao (cuối năm, năm hiện tại = năm 1). Không nhân tỷ lệ đã bán: căn chưa bán
+        vẫn là giá trị sẽ thu.
+        """
+        total, missing = 0.0, []
+        for i, p in enumerate(projects, 1):
+            name = p.get('ten_du_an') or f"#{i}"
+            nsa = input_number(p, 'dien_tich_san_thuong_pham_m2')
+            area, far = input_number(p, 'area_ha'), input_number(p, 'he_so_su_dung_dat')
+            if nsa is None and area is not None and far is not None:
+                nsa = area * 10_000 * far
+            raw = {
+                'dien_tich_san_thuong_pham_m2': nsa,
+                'gia_ban_tren_m2': input_number(p, 'gia_ban_tren_m2'),
+                # Không suy chi phí từ bien_ln_rong: không rõ biên trước hay sau thuế (luật vàng #1).
+                'chi_phi_tren_m2': input_number(p, 'chi_phi_tren_m2'),
+                'ty_le_so_huu': input_number(p, 'ty_le_so_huu'),  # bắt buộc, không mặc định 100%
+                'gia_tri_so_sach_rong_ty': input_number(p, 'gia_tri_so_sach_rong_ty'),
+            }
+            lack = [k for k, v in raw.items() if v is None]
+            if lack:
+                missing += [f"{name}.{k}" for k in lack]
+                continue
+            vals = {k: float(v or 0.0) for k, v in raw.items()}  # đã đủ, chỉ để thu hẹp kiểu
+            book = vals['gia_tri_so_sach_rong_ty'] * 1e9
+            cf_total = vals['dien_tich_san_thuong_pham_m2'] * (vals['gia_ban_tren_m2'] - vals['chi_phi_tren_m2']) * (1 - tax) + book
+            start = max(current_year, int(input_number(p, 'nam_mo_ban') or current_year))
+            end = max(start, int(input_number(p, 'nam_ban_giao') or current_year))
+            n = end - start + 1
+            pv = sum(cf_total / n / (1 + wacc) ** (y - current_year + 1) for y in range(start, end + 1))
+            total += vals['ty_le_so_huu'] / 100.0 * (pv - book)
+        return total, missing
 
     def perform_valuation(self) -> Dict[str, Any]:
         shares = self.current_financials.get('shares_outstanding', 1)
         equity = self.current_financials.get('total_equity', 0)
-        cash = self.current_financials.get('cash_and_equivalents', 0)
-        total_debt = self.current_financials.get('total_debt', 0)
-        minority_interest = self.current_financials.get('minority_interest', 0)
-        
         inventory = self.current_financials.get('inventory', 0)
         inv_property = self.current_financials.get('investment_property', 0)
 
-        rnav_projects = self.assumptions.get('rnav_projects', [])
-        wacc = self.assumptions.get('rnav_wacc', 0.11)
-        rnav_discount = self.assumptions.get('rnav_discount', 0.45)
+        rnav_projects = self.assumptions.get('rnav_projects') or []
+        rnav_discount = self.assumptions['rnav_discount']
+        tax = self.assumptions['tax_rate']
+
         current_year = datetime.datetime.now().year
-        
         flags = []
-
-        if rnav_projects and len(rnav_projects) > 0:
-            # AI_RNAV_MODE (DCF Dự án)
-            sum_npv = 0.0
-            for proj in rnav_projects:
-                # Diện tích sàn (m2)
-                nsa = proj.get('dien_tich_san_thuong_pham_m2')
-                if nsa is None or str(nsa).lower() == 'null':
-                    # Thử lấy ha đất x hệ số
-                    he_so = proj.get('he_so_su_dung_dat', 1.0)
-                    area_ha = proj.get('area_ha', 0) # Fallback if any
-                    nsa = float(area_ha) * 10000 * float(he_so or 1.0)
-                else:
-                    nsa = float(nsa)
-                
-                # Giá bán (VND/m2)
-                gia_ban = float(proj.get('gia_ban_tren_m2', 0) or 0)
-                
-                # Chi phí / Biên LN
-                bien_ln = proj.get('bien_ln_rong', None)
-                if bien_ln is not None and str(bien_ln).lower() != 'null':
-                    loi_nhuan_m2 = gia_ban * (float(bien_ln) / 100.0)
-                else:
-                    chi_phi = float(proj.get('chi_phi_tren_m2', 0) or 0)
-                    loi_nhuan_m2 = gia_ban - chi_phi
-                    
-                # Doanh thu / Dòng tiền ròng dự án
-                ty_le_so_huu = float(proj.get('ty_le_so_huu', 100) or 100) / 100.0
-                ty_le_da_ban = float(proj.get('ty_le_da_ban', 100) or 100) / 100.0
-                
-                # Tổng CF (để chiết khấu)
-                total_project_cf = nsa * loi_nhuan_m2 * ty_le_so_huu * ty_le_da_ban
-                
-                # Phân bổ DCF (mở bán -> bàn giao)
-                nam_mo_ban = int(float(proj.get('nam_mo_ban', current_year) or current_year))
-                nam_ban_giao = int(float(proj.get('nam_ban_giao', current_year) or current_year))
-                
-                # Tránh năm quá khứ
-                start_year = max(current_year, nam_mo_ban)
-                end_year = max(start_year, nam_ban_giao)
-                duration = end_year - start_year + 1
-                
-                cf_per_year = total_project_cf / duration
-                
-                npv_project = 0.0
-                for y in range(start_year, end_year + 1):
-                    t = y - current_year + 1 # năm 1, 2, 3...
-                    npv_project += cf_per_year / ((1 + wacc) ** t)
-                
-                sum_npv += npv_project
-
-            # NAV VCSH (Trừ nợ ròng)
-            # NAV = NPV_Dự_án + Tiền mặt - Nợ_vay - CĐTS
-            nav_equity = sum_npv + cash - total_debt - minority_interest
-            
-            nav_sau_chiet_khau = nav_equity * (1 - rnav_discount)
-            rnav_fvps = (nav_sau_chiet_khau / shares) if shares > 0 else 0
-            
+        missing = []
+        if rnav_projects:
+            reval, missing = self.project_revaluation(rnav_projects, self.assumptions['rnav_wacc'], tax, current_year)
+        if rnav_projects and not missing:
             flags = ["AI_RNAV_MODE"]
             if "VALUATION_PROXY" in self.valuation_warnings:
                 self.valuation_warnings.remove("VALUATION_PROXY")
-                
         else:
-            # PROXY_MODE
-            # Chiết khấu (rnav_discount) chỉ áp cho PHẦN ĐÁNH GIÁ LẠI (premium
-            # đất/BĐS đầu tư — số liệu ước lượng, có rủi ro/thanh khoản khi
-            # hiện thực hoá), KHÔNG áp cho vốn CSH sổ sách (đã kiểm toán, chắc
-            # chắn). Bản trước chiết khấu cả NAV gộp (equity + premium) —
-            # với công ty quỹ đất lâu năm (đất ghi giá gốc từ nhiều năm trước,
-            # premium/equity lớn), điều này có thể kéo FV xuống DƯỚI CẢ giá trị
-            # sổ sách — phi lý cho công ty có tài sản lõi bị định giá thấp
-            # trên sổ sách. Điều tra 2026-07, xem DECISIONS.md.
-            premium = self.assumptions.get('rnav_land_premium', 0.30)
-            revaluation_surplus = (inventory + inv_property) * premium
-            surplus_sau_chiet_khau = revaluation_surplus * (1 - rnav_discount)
-            nav_equity = equity + surplus_sau_chiet_khau
-            rnav_fvps = (nav_equity / shares) if shares > 0 else 0
+            # PROXY: chỉ đánh giá lại tài sản có giá thị trường khác giá sổ (CFA adjusted book value) — tồn
+            # kho BĐS và BĐS đầu tư; KHÔNG cộng thặng dư lên phải thu/đầu tư tài chính/XDCB.
+            reval = (inventory + inv_property) * self.assumptions['rnav_land_premium'] * (1 - tax)
             flags = ["VALUATION_PROXY"]
+            if missing:
+                # Dự án nhập thiếu → không định giá nửa vời; vẫn bị chặn công bố qua VALUATION_PROXY.
+                flags.append("RNAV_PROJECT_INPUT_MISSING: " + ", ".join(missing))
+        nav_equity = equity + reval
+        rnav_fvps = (equity + reval * (1 - rnav_discount)) / shares if shares > 0 else 0
 
         return {
             "blended_fair_value_per_share": rnav_fvps, # Use this directly for target price
             "rnav_fvps": rnav_fvps,
             "nav_equity_before_discount": nav_equity,
+            "revaluation_after_tax": reval,
             "discount_applied": rnav_discount,
             "flags": flags,
         }

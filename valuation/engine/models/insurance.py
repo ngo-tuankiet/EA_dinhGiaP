@@ -10,9 +10,13 @@ kinh tế hai ngành khác hẳn:
   trái phiếu/tiền gửi) → chi phối bởi chu kỳ LÃI SUẤT, dài hơn và êm hơn nhiều.
   Đo thực tế 3 mã VN100: ROE 7%-14%, mid-cycle 8,6%-12,6%.
 
-Hệ quả thiết kế: cửa sổ chuẩn hoá ROE DÀI HƠN (mặc định 5 kỳ thay vì 3) vì chu
-kỳ lãi suất dài hơn chu kỳ thanh khoản; và KHÔNG có cú "fade sau tăng vốn" như
-CTCK vì bảo hiểm không có hiện tượng vốn mới chưa giải ngân ở quy mô đó.
+Hệ quả thiết kế: ROE giữ phẳng ở mức chuẩn hoá (cửa sổ forecast.margin_window_years
+như D61 — bản đầu dùng 5 kỳ riêng, trộn cả năm ROE đáy 2022), KHÔNG có cú "fade sau
+tăng vốn" như CTCK vì bảo hiểm không có hiện tượng vốn mới chưa giải ngân ở quy mô đó.
+
+Chân thứ hai là P/B THỊ TRƯỜNG lịch sử của chính mã (như NH/CK, D38/D39): P/B hợp lý
+(ROE−g)/(COE−g) dùng cùng ROE/COE với RI nên không kiểm tra chéo được gì. Embedded
+Value mảng nhân thọ chưa có dữ liệu → FV thiếu VIF, BVH giữ event hold.
 
 KIỂM CHỨNG NGUỒN GỐC LỢI NHUẬN: docstring `pb_relative.py` từng cảnh báo lợi
 nhuận bảo hiểm có thể bị map nhầm từ DOANH THU PHÍ. Model này kiểm tra ROE có
@@ -25,13 +29,12 @@ from typing import Any, Dict, List
 import statistics
 
 from valuation.config import load_defaults
+from valuation.engine.forecast_bank import begin_roe_from_avg, ni_from_avg_roe
 
 from .base import BaseValuationModel
-from .securities import roe_path_from_history
+from .securities import apply_data_payout, payout_flags, roe_path_from_history
 
 _DEFAULTS = {
-    # Chu kỳ lãi suất dài hơn chu kỳ thanh khoản -> cửa sổ chuẩn hoá dài hơn.
-    "norm_years": 5,
     # Ngoài khoảng này thì nghi lợi nhuận bị map nhầm (vd lấy nhầm doanh thu phí,
     # vốn lớn gấp nhiều lần lợi nhuận thật -> ROE vọt phi lý).
     "roe_sanity_min": 0.0,
@@ -40,6 +43,8 @@ _DEFAULTS = {
     "terminal_roe_cap": 0.16,
     "weight_ri": 0.5,
     "payout_ratio": 0.30,
+    "payout_cap": 1.0,
+    "payout_years": 3,
     "forecast_years": 5,
 }
 
@@ -72,12 +77,13 @@ class InsuranceValuationModel(BaseValuationModel):
             "current_price": company.current_price,
         }
         assumptions = {
+            "historical_pb_median": getattr(a, "historical_pb_median", None),
             "cost_of_equity": coe,
             "risk_free_rate": a.risk_free_rate,
             "long_term_growth": a.terminal_growth_rate,
             **cfg,
         }
-        return cls(company.ticker, cf, assumptions)
+        return cls(company.ticker, cf, apply_data_payout(assumptions, company))
 
     # ------------------------------------------------------------------
     def forecast_drivers(self) -> Dict[str, Any]:
@@ -87,8 +93,9 @@ class InsuranceValuationModel(BaseValuationModel):
         if not roes:
             return {"roes": [], "terminal_roe": None, "flags": ["NO_ROE_DATA"]}
 
-        n = int(self.assumptions.get("norm_years", 5))
-        roe_norm = statistics.median(roes[-n:]) if len(roes) >= 1 else roes[-1]
+        # D61: cùng cửa sổ N năm gần nhất với ROE mid-cycle CTCK và biên EBIT phi tài chính.
+        n = int((load_defaults().get("forecast") or {}).get("margin_window_years", 4))
+        roe_norm = statistics.median(roes[-n:])
 
         flags: List[str] = []
         lo = float(self.assumptions.get("roe_sanity_min", 0.0))
@@ -133,24 +140,32 @@ class InsuranceValuationModel(BaseValuationModel):
         n_years = int(self.assumptions.get("forecast_years", 5))
 
         # --- Residual Income: ROE giữ ở mức chuẩn hoá (bảo hiểm ít biến động) ---
+        # ROE chuẩn hoá đo trên VCSH BÌNH QUÂN → LN giải theo VCSH đầu kỳ, RI terminal/P/B hợp lý dùng ROE đầu
+        # kỳ = ROE × (1 + g/2) — cùng quy đổi với NH/CTCK (forecast_bank).
+        roe_b = begin_roe_from_avg(terminal_roe, g)
         pv_ri, book = 0.0, book0
         for year in range(1, n_years + 1):
-            ni_y = book * terminal_roe
+            ni_y = ni_from_avg_roe(terminal_roe, book, payout)
             ri = ni_y - book * coe
             pv_ri += ri / ((1.0 + coe) ** year)
-            book += ni_y * (1.0 - payout)
+            book += ni_y - max(ni_y, 0.0) * payout  # lỗ không chia cổ tức
 
         ri_fvps = 0.0
         if coe > g:
-            terminal_ri = (terminal_roe - coe) * book
+            terminal_ri = (roe_b - coe) * book
             pv_tv = (terminal_ri / (coe - g)) / ((1.0 + coe) ** n_years)
             ri_fvps = (book0 + pv_ri + pv_tv) / shares
         else:
             flags.append("COE_LE_G_RI_SKIPPED")
 
-        # --- Justified P/B ---
-        target_pb = (terminal_roe - g) / (coe - g) if coe > g else 1.0
-        pb_fvps = target_pb * book0 / shares
+        # --- Chân P/B: ưu tiên P/B THỊ TRƯỜNG lịch sử của chính mã (như securities.py) ---
+        target_pb = (roe_b - g) / (coe - g) if coe > g else 1.0
+        hist_pb = self.assumptions.get("historical_pb_median")
+        if hist_pb and hist_pb > 0:
+            pb_fvps = hist_pb * book0 / shares
+        else:
+            pb_fvps = target_pb * book0 / shares
+            flags.append("INS_NO_MARKET_PB_HISTORY")
 
         w_ri = float(self.assumptions.get("weight_ri", 0.5))
         blended = max(0.0, ri_fvps * w_ri + pb_fvps * (1.0 - w_ri))
@@ -158,11 +173,16 @@ class InsuranceValuationModel(BaseValuationModel):
         from valuation.engine.guardrails import (
             check_fv_vs_price,
             check_implied_pb,
+            legs_diverge,
             market_pb,
         )
+        if 0.0 < w_ri < 1.0 and legs_diverge(ri_fvps, pb_fvps):
+            # Như DCF: trung bình hai chân bất đồng (DSE RI 2.746 vs P/B 29.589) không phải giá trị hợp lý → chặn.
+            flags.append("VALUATION_LEGS_DIVERGE")
         mkt_pb = market_pb(price, book0, shares)
         flags += check_implied_pb(target_pb, mkt_pb, label="INS_PB")
         flags += check_fv_vs_price(blended, price)
+        flags += payout_flags("INS", self.assumptions, payout, roe_b, g)
 
         return {
             "blended_fair_value_per_share": blended,

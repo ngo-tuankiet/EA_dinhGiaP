@@ -67,6 +67,7 @@ def main():
                 incremental=True,
                 include_yearly=ticker not in have_financials,
                 include_market_flows=False,
+                is_vn100=True,  # danh sách lấy từ ảnh rổ VN100 (get_vn100_symbols)
             )
             if ingest_result["status"] == "SUCCESS":
                 print("OK")

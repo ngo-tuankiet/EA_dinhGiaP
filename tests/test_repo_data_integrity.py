@@ -5,7 +5,7 @@ from valuation.engine import ttm_helper
 
 
 def test_missing_shares_raises_instead_of_using_silent_fallback(monkeypatch):
-    def _missing_shares(_db, ticker, as_of_date=None):
+    def _missing_shares(_db, ticker, as_of_date=None, price_basis=False):
         raise ValueError(f"missing shares for {ticker}")
 
     monkeypatch.setattr(ttm_helper, "get_shares_outstanding", _missing_shares)

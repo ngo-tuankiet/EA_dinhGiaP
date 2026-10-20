@@ -31,6 +31,8 @@ python3 -m venv .venv
   Streamlit thì phải kiểm tra lại giao diện điện thoại.
 - `kaleido` (Plotly xuất ảnh biểu đồ cho PDF/Word) cần Chrome. VPS thường chưa có → tải bản riêng cho kaleido:
   `.venv/bin/kaleido_get_chrome` (một lần). Thiếu Chrome thì app vẫn chạy, chỉ PDF/Word không kèm biểu đồ.
+- `playwright` (xuất PDF báo cáo) cần Chromium: `.venv/bin/playwright install --with-deps chromium` (một lần,
+  có thể cần sudo cho thư viện hệ thống). Thiếu thì nút PDF trả trang thay thế; Word/HTML vẫn đầy đủ.
 - `vnii` / `vnstock_data` là gói tài trợ vnstock. Nếu `pip install` báo không tìm thấy, cài theo hướng dẫn gói
   tài trợ của vnstock rồi chạy lại lệnh trên. App vẫn mở được với dữ liệu có sẵn; chỉ nút cập nhật dữ liệu cần gói này.
 

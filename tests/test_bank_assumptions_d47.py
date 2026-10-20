@@ -4,8 +4,8 @@
    quy riêng — ACB beta riêng 0,77 cho COE 10,9%, thấp nhất nhóm, nhiễu ước lượng.
 2. Tỷ lệ chi trả tiền = max(thực trả 3 năm, cổ tức tiền đã GDKHQ 12 tháng gần nhất / LN TTM) — MBB 3 năm
    8,7% nhưng 1.000đ GDKHQ 09/07/2026 ≈ 27% LN (trả ở quý 3, ngoài cửa sổ TTM).
-3. Chi phí tín dụng = max(TTM, trung vị 3 năm tài chính); TTM > 2× trung vị coi là trích lập đột biến
-   một lần (STB Q4/2025) → giữ trung vị + cờ.
+3. Chi phí tín dụng phai tuyến tính TTM → trung vị 3 năm tài chính (s3, thay max(TTM, trung vị));
+   TTM > spike_multiple × trung vị coi là trích lập đột biến một lần (STB Q4/2025) → giữ trung vị + cờ.
 4. Sàn VCSH/Tổng tài sản = min(hiện tại, trung vị lịch sử): không ép VPB giảm đòn bẩy (LN năm 1 −44%)
    nhưng không cho NH tăng đòn bẩy vượt hiện tại (bỏ hẳn sàn từng đẩy TCB +48%) → cờ khi dưới lịch sử.
 """
@@ -14,12 +14,12 @@ from datetime import date
 
 import pytest
 
-from valuation.data_access.repo import build_company_data, normalized_credit_cost
+from valuation.data_access.repo import build_company_data, credit_cost_schedule
 from valuation.db.session import SessionLocalRead
 from valuation.engine.ttm_helper import (
-    bank_peer_beta,
     estimate_vcb_beta,
     recent_cash_payout,
+    sector_peer_beta,
 )
 
 
@@ -56,23 +56,21 @@ def test_recent_cash_payout_ignores_events_older_than_12_months_or_after_as_of()
     )
 
 
-def test_normalized_credit_cost_rules():
-    assert normalized_credit_cost(0.0056, 0.0040, spike_multiple=2.0) == (
-        0.0056,
-        False,
-    )  # ACB: TTM cao hơn
-    assert normalized_credit_cost(0.0275, 0.0453, spike_multiple=2.0) == (
-        0.0453,
-        False,
-    )  # VPB: giữ trung vị
-    assert normalized_credit_cost(0.0286, 0.0081, spike_multiple=2.0) == (
-        0.0081,
-        True,
-    )  # STB: đột biến
+def test_credit_cost_schedule_rules():
+    # VPB: TTM 2,91% < trung vị 4,53% → phai lên; bước (4,53 − 2,91)/4 = 0,405pp (tính tay).
+    cc, spike = credit_cost_schedule(0.0291, 0.0453, spike_multiple=1.5)
+    assert cc == pytest.approx([0.0291, 0.03315, 0.0372, 0.04125, 0.0453])
+    assert spike is False
+    # ACB: TTM 0,56% > trung vị 0,40% (chưa tới 1,5×) → phai XUỐNG, đối xứng (luật max cũ giữ 0,56%).
+    cc, spike = credit_cost_schedule(0.0056, 0.0040, spike_multiple=1.5)
+    assert cc == pytest.approx([0.0056, 0.0052, 0.0048, 0.0044, 0.0040])
+    assert spike is False
+    # STB: TTM 2,86% > 1,5 × 0,81% → đột biến một lần, giữ trung vị phẳng + cờ.
+    assert credit_cost_schedule(0.0286, 0.0081, spike_multiple=1.5) == ([0.0081] * 5, True)
 
 
 def test_bank_beta_is_peer_median(db):
-    peer = bank_peer_beta(db)
+    peer = sector_peer_beta(db, "NH")
     for t in ("ACB", "VCB", "MBB"):
         assert build_company_data(db, t).assumptions.beta == pytest.approx(peer)
     assert estimate_vcb_beta(db, "ACB") < peer  # beta riêng của ACB thấp hơn ngành

@@ -82,9 +82,12 @@ def test_parent_equity_excludes_minority_interest():
     assert bs.parent_equity == pytest.approx(36_483)
 
 
-def test_unexplained_current_assets_flags_missing_deposit_line():
-    # FPT 2025 trước khi sửa: tiền 10.522, phải thu 14.402, tồn kho 2.194, ĐTNH 0,
-    # phần dư 31.019 / 58.137 = 53% → nghi mất dòng (thực tế là 29.631 tỷ tiền gửi).
-    assert unexplained_current_assets(10_522, 0, 14_402, 2_194, 31_019)
-    # Sau khi sửa: ĐTNH 29.631, phần dư còn ~1.388 (2,4%) → không cờ.
-    assert not unexplained_current_assets(10_522, 29_631, 14_402, 2_194, 1_388)
+def test_unexplained_current_assets_checks_b01_subtotals():
+    # BAF 2026-Q2 (tỷ): 5.637,41 − (456,94 + 782,95 + 1.209,37 + 573,75 + 59,00) = 2.555,40
+    # → 45,3% > 5% → cờ (tài sản sinh học TT99/2025 chưa có ID taxonomy, dòng bị mất khi nạp).
+    assert unexplained_current_assets(5_637.41, 456.94, 782.95, 1_209.37, 573.75, 59.00)
+    # DXG: 35.410 − (1.872 + 3.234 + 13.750 + 15.985 + 567) = 2 → 0,0% → không cờ. Quy tắc cũ
+    # theo phải thu KHÁCH HÀNG báo nhầm vì trả trước người bán/phải thu khác vẫn thuộc mục 130.
+    assert not unexplained_current_assets(35_410, 1_872, 3_234, 13_750, 15_985, 567)
+    # Mất dòng ĐTNH (như FPT 2025 trước khi sửa): 100 − 50 = 50 ngoài 5 mục → 50% → cờ.
+    assert unexplained_current_assets(100.0, 10.0, 0.0, 25.0, 10.0, 5.0)

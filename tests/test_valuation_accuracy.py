@@ -263,12 +263,17 @@ class TestB3SustainableRoe:
             f"B3 FAIL: long_term_roe={pb_res['long_term_roe']:.4f}, phải = 0.11"
         )
 
-        # Bằng chứng B3 áp dụng: sustainable_roe KHÁC ROE dự phóng năm 5
-        roe_yr5 = model.projections[-1]["net_income"] / model.projections[-2]["total_equity"]
+        # Bằng chứng B3 áp dụng: sustainable_roe KHÁC ROE năm 5 của dự phóng DRIVER (fx2: dự phóng mặc định phai
+        # ROE năm 3–5 về ROE terminal nên năm 5 ≈ 0,11 theo thiết kế).
+        from valuation.engine.forecast_bank import forecast_bank_financials
+
+        drv = forecast_bank_financials(company, fade_to_terminal=False)
+        roe_yr5 = drv[-1]["net_income"] / drv[-2]["total_equity"]
         assert abs(roe_yr5 - 0.11) > 0.02, "test cần sustainable_roe khác ROE năm 5 mới có ý nghĩa"
 
-        # Target P/B khớp công thức Gordon với sustainable_roe
-        expected_pb = max(0.3, (0.11 - model.g) / (model.coe - model.g))
+        # Target P/B khớp công thức Gordon với sustainable_roe quy về VCSH đầu kỳ ở trạng thái dừng
+        # (fx2: ROE bình quân × (1 + g/2)).
+        expected_pb = max(0.3, (0.11 * (1 + model.g / 2) - model.g) / (model.coe - model.g))
         assert abs(pb_res["target_pb"] - expected_pb) < 1e-6
 
 
@@ -420,9 +425,10 @@ class TestBankGoldenVcb:
         g = model.g       # ≈ 0.02
 
         long_term_roe = pb_res["long_term_roe"]
-        # Verify công thức P/B
+        # Verify công thức P/B (Gordon dùng ROE trên VCSH đầu kỳ = ROE bình quân × (1 + g/2), fx2)
+        assert pb_res["long_term_roe_begin"] == pytest.approx(long_term_roe * (1 + g / 2))
         if coe > g:
-            expected_target_pb = max(0.3, (long_term_roe - g) / (coe - g))
+            expected_target_pb = max(0.3, (pb_res["long_term_roe_begin"] - g) / (coe - g))
         else:
             expected_target_pb = 1.0
 

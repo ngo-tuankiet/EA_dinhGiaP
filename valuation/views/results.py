@@ -1081,15 +1081,28 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
                 template = jinja2.Template(template_str)
                 html_rendered = template.render(**report_data)
 
-                if build_pdf_report(html_rendered, pdf_path):
-                    with open(pdf_path, "rb") as fpdf:
-                        st.download_button(
-                            label="📥 Tải xuống báo cáo PDF",
-                            data=fpdf.read(),
-                            file_name=f"Bao_cao_dinh_gia_{company.ticker}.pdf",
-                            mime="application/pdf",
-                            width="stretch",
-                        )
+                # Dựng PDF (Chrome) mất vài giây → chỉ khi bấm (D60). Lưu kèm dấu của HTML: đổi giả định
+                # thì bản đã tạo không còn khớp → ẩn nút tải, không phát bản cũ.
+                import hashlib
+
+                pdf_key = f"report_pdf_{company.ticker}"
+                html_sig = hashlib.sha256(html_rendered.encode("utf-8")).hexdigest()
+                if st.button("Tạo báo cáo PDF", width="stretch", help="Mất vài giây."):
+                    with st.spinner("Đang dựng PDF..."):
+                        if build_pdf_report(html_rendered, pdf_path):
+                            with open(pdf_path, "rb") as fpdf:
+                                st.session_state[pdf_key] = (html_sig, fpdf.read())
+                saved = st.session_state.get(pdf_key)
+                if saved and saved[0] == html_sig:
+                    st.download_button(
+                        label="📥 Tải xuống báo cáo PDF",
+                        data=saved[1],
+                        file_name=f"Bao_cao_dinh_gia_{company.ticker}.pdf",
+                        mime="application/pdf",
+                        width="stretch",
+                    )
+                elif saved:
+                    st.caption("Giả định đã đổi — bấm tạo lại PDF.")
             else:
                 st.error("Không tìm thấy tệp template.html!")
 

@@ -34,7 +34,10 @@ def build_pdf_report(
         try:
             from playwright.sync_api import sync_playwright
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
+                try:
+                    browser = p.chromium.launch(headless=True)
+                except Exception:  # noqa: BLE001 — chưa `playwright install` → dùng Chrome của máy
+                    browser = p.chromium.launch(headless=True, channel="chrome")
                 page = browser.new_page()
                 page.set_content(html_content)
                 page.pdf(path=output_path, format="A4", print_background=True)

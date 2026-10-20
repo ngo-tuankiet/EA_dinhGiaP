@@ -2,6 +2,8 @@
 Test RNAV/SOTP proxy: from_pydantic chạy được, trả blended_fair_value_per_share
 và GẮN CỜ VALUATION_PROXY (cảnh báo dữ liệu chỉ là ước lượng tổng quát).
 """
+import pytest
+
 from valuation.models.financials import (
     Company, IncomeStatement, BalanceSheet, CashFlow, Assumptions,
 )
@@ -58,12 +60,58 @@ def test_sotp_earnings_based_not_book(_=None):
     assert res["blended_fair_value_per_share"] > res["nav_per_share"]
 
 
-def test_rnav_revalues_investment_property():
-    """RNAV v2: BĐS đầu tư (other_long_term_assets) cũng được đánh giá lại, không chỉ tồn kho."""
+def test_rnav_revalues_investment_property_not_residual_long_term_assets():
+    """s6 F2: chỉ BĐS đầu tư thật (investment_property) được đánh giá lại; phần dư tài sản dài hạn
+    (phải thu dài hạn, đầu tư liên kết, XDCB...) thì KHÔNG."""
     base = _company()
-    # Cùng công ty nhưng thêm BĐS đầu tư lớn → RNAV phải cao hơn.
-    rich = _company()
-    rich.historical_bs[-1].other_long_term_assets = 5000.0
-    fv_base = RNAVValuationModel.from_pydantic(base).perform_valuation()["rnav_fvps"]
-    fv_rich = RNAVValuationModel.from_pydantic(rich).perform_valuation()["rnav_fvps"]
-    assert fv_rich > fv_base
+    residual = _company()
+    residual.historical_bs[-1].other_long_term_assets = 5000.0
+    ip = _company()
+    ip.historical_bs[-1].investment_property = 5000.0
+    fv = {k: RNAVValuationModel.from_pydantic(c).perform_valuation()["rnav_fvps"]
+          for k, c in (("base", base), ("residual", residual), ("ip", ip))}
+    assert fv["residual"] == fv["base"]
+    assert fv["ip"] > fv["base"]
+
+
+def test_rnav_proxy_hand_calc_after_tax():
+    """Ca tay (chẩn đoán RNAV F2+F3b): VCSH mẹ 600 tỷ, 100 triệu cp, tồn kho 400, BĐS đầu tư 100,
+    phần dư dài hạn 500 (gồm 400 phải thu dài hạn), premium 0,2, thuế 20%, chiết khấu 0,4.
+    Thặng dư = (400 + 100) × 0,2 = 100; sau thuế 80; sau chiết khấu 48 → FV = 648 tỷ / 100tr = 6.480đ.
+    (Code cũ: (400 + 500) × 0,2 × 0,6 = 108 → 7.080đ.)"""
+    c = _company()
+    c.historical_bs[-1].investment_property = 100.0
+    c.historical_bs[-1].other_long_term_assets = 500.0
+    c.assumptions.rnav_revaluation_premium = 0.2
+    c.assumptions.rnav_discount = 0.4
+    res = RNAVValuationModel.from_pydantic(c).perform_valuation()
+    assert res["rnav_fvps"] == pytest.approx(6_480.0)
+    assert res["nav_equity_before_discount"] == pytest.approx(680e9)  # 600 + 80 sau thuế, trước chiết khấu
+
+
+def test_rnav_proxy_assumptions_come_from_config(monkeypatch):
+    """s6 F3a: config proxy_valuation thực sự có tác dụng (trước đây mặc định Pydantic 0,2/0,4 che config 0,30)."""
+    from valuation.config import load_defaults
+
+    cfg = load_defaults()["proxy_valuation"]
+    monkeypatch.setitem(cfg, "rnav_land_premium", 0.25)
+    monkeypatch.setitem(cfg, "rnav_discount", 0.5)
+    c = _company()  # Assumptions dựng SAU khi đổi config → nhận mặc định mới
+    assert c.assumptions.rnav_revaluation_premium == 0.25
+    # Thặng dư = 400 × 0,25 × 0,8 × 0,5 = 40 → (600 + 40) tỷ / 100tr = 6.400đ
+    res = RNAVValuationModel.from_pydantic(c).perform_valuation()
+    assert res["rnav_fvps"] == pytest.approx(6_400.0)
+
+
+def test_repo_maps_investment_properties_line():
+    """repo nạp dòng investment_properties vào BalanceSheet.investment_property (VHM: BĐS đầu tư ~15,9 nghìn tỷ,
+    nhỏ hơn nhiều phần dư tài sản dài hạn ~410 nghìn tỷ mà proxy cũ đánh giá lại)."""
+    from valuation.data_access.repo import build_company_data
+    from valuation.db.session import SessionLocalRead
+
+    db = SessionLocalRead()
+    try:
+        bs = build_company_data(db, "VHM", mode="TTM", fetch_live=False).historical_bs[-1]
+    finally:
+        db.close()
+    assert 0 < bs.investment_property < 0.2 * bs.other_long_term_assets

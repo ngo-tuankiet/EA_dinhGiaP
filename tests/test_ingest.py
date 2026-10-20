@@ -244,3 +244,58 @@ def test_incremental_prices_skip_full_refetch_when_overlap_unchanged(monkeypatch
     )
     assert len(calls) == 1
     assert result["prices"]["full_refresh"] is False
+
+
+def test_run_ingest_new_subsidiary_is_not_added_to_vn100(monkeypatch):
+    """Công ty con niêm yết ingest cho SOTP (is_vn100=False) không được lọt vào rổ VN100."""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine)
+    monkeypatch.setattr(pipeline, "SessionLocalWrite", factory)
+    monkeypatch.setattr(
+        pipeline.vnstock_client,
+        "get_company_overview",
+        lambda _t: pd.DataFrame([{"organ_name": "Sub", "sector": "Utilities"}]),
+    )
+    prices = pd.DataFrame(
+        {"time": ["2026-10-19"], "open": [10.0], "high": [10.0], "low": [10.0], "close": [10.0], "volume": [1]}
+    )
+    monkeypatch.setattr(pipeline.vnstock_client, "get_historical_prices", lambda *_: prices)
+
+    kwargs = {"data_types": ["prices"], "include_yearly": False, "include_market_flows": False, "is_vn100": False}
+    assert pipeline.run_ingest("SUB", **kwargs)["status"] == "SUCCESS"
+    assert pipeline.run_ingest("SUB", **kwargs)["status"] == "SUCCESS"  # chạy lại: không nhân đôi
+    with factory() as db:
+        assert db.get(Ticker, "SUB").is_vn100 is False
+        assert db.query(PricesDaily).filter(PricesDaily.ticker == "SUB").count() == 1
+
+
+def test_weekly_update_refreshes_sotp_subsidiaries_outside_vn100(monkeypatch):
+    """Công ty con SOTP ngoài VN100 được làm mới hàng tuần với is_vn100=False; mã VN100 không bị chạy hai lần."""
+    import valuation.config as cfg_mod
+    from valuation.ingest import weekly_updater
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine)
+    with factory() as db:
+        db.add(Ticker(ticker="HOLD", company_name="HOLD", is_vn100=True))
+        db.add(Ticker(ticker="LIST", company_name="LIST", is_vn100=True))
+        db.commit()
+    calls = []
+
+    def fake_ingest(ticker, data_types, **kw):
+        calls.append((ticker, kw.get("is_vn100", True)))
+        return {"status": "SUCCESS", "prices": {"status": "UPDATED"}, "errors": []}
+
+    monkeypatch.setattr(weekly_updater, "run_ingest", fake_ingest)
+    monkeypatch.setattr(weekly_updater, "_CONSENSUS_SOURCES", ())
+    monkeypatch.setattr(weekly_updater.time, "sleep", lambda _s: None)
+    holdings = {"holders": {"HOLD": {"holdings": [{"ticker": "LIST"}, {"ticker": "sub"}]}}}
+    monkeypatch.setattr(cfg_mod, "load_sotp_holdings", lambda: holdings)
+
+    with factory() as db:
+        out = weekly_updater.run_weekly_auto_update(db)
+    assert out["sotp_subs"] == {"SUB": "SUCCESS"}
+    assert ("SUB", False) in calls
+    assert [t for t, _ in calls].count("LIST") == 1

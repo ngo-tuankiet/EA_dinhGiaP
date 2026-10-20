@@ -1,8 +1,15 @@
 """
 Financial models — Các mô hình Pydantic v2 để validate dữ liệu tài chính cho doanh nghiệp phi tài chính.
 """
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 from pydantic import BaseModel, Field, model_validator
+
+
+def _proxy_cfg() -> dict:
+    from valuation.config import load_defaults
+
+    return load_defaults()["proxy_valuation"]
+
 
 class GovernanceData(BaseModel):
     audit_issue: bool = Field(False, description="Có vấn đề ngoại trừ từ kiểm toán không")
@@ -26,10 +33,13 @@ class IncomeStatement(BaseModel):
     opex: float = Field(..., description="Chi phí hoạt động (bán hàng + QLDN) (tỷ đồng)")
     ebit: float = Field(..., description="Lợi nhuận trước lãi vay và thuế (tỷ đồng)")
     interest_expense: float = Field(..., description="Chi phí lãi vay (tỷ đồng)")
-    tax: float = Field(..., description="Thuế TNDN (tỷ đồng)")
+    tax: float = Field(..., description="Chi phí thuế TNDN (tỷ đồng); âm = lợi ích thuế ròng (hoãn lại)")
     net_income: float = Field(..., description="Lợi nhuận sau thuế (tỷ đồng)")
     jv_income: float = Field(
         0.0, description="Lãi/lỗ từ công ty liên doanh, liên kết (tỷ đồng) — nằm ngoài EBIT"
+    )
+    pbt: float | None = Field(
+        None, description="Tổng LN kế toán trước thuế báo cáo (mã 50, tỷ đồng); None = nguồn không có dòng"
     )
 
 class BalanceSheet(BaseModel):
@@ -68,6 +78,27 @@ class BalanceSheet(BaseModel):
     investments_in_associates: float = Field(
         0.0,
         description="Đầu tư vào liên doanh, liên kết theo sổ sách (tỷ đồng) — một phần của long_term_investments_net",
+    )
+    construction_in_progress: float = Field(
+        0.0,
+        description=(
+            "Chi phí XDCB dở dang (mã 242, tỷ đồng) — một phần của other_long_term_assets; chưa tạo "
+            "doanh thu/EBITDA nên định giá theo sổ sách ở cầu nối EV (NPV = 0), không thuộc vốn vận hành"
+        ),
+    )
+    investment_property: float = Field(
+        0.0,
+        description=(
+            "Bất động sản đầu tư ròng (dòng investment_properties, tỷ đồng) — một phần của "
+            "other_long_term_assets; tài sản có giá thị trường khác giá sổ (cơ sở đánh giá lại RNAV)"
+        ),
+    )
+    deferred_revenue: float = Field(
+        0.0,
+        description=(
+            "Doanh thu chưa thực hiện ngắn + dài hạn (mã 318 + 336, tỷ đồng) — nợ vận hành (tiền thuê "
+            "trả trước của KCN...), một phần của other_*_liabilities; Δ của nó là dòng tiền trong vốn lưu động"
+        ),
     )
 
     @property
@@ -125,7 +156,12 @@ class Assumptions(BaseModel):
     
     # Cơ cấu vốn & Nợ
     cost_of_debt: float = Field(0.06, description="Chi phí nợ vay trước thuế")
-    tax_rate: float = Field(0.20, description="Thuế suất TNDN")
+    tax_rate: float = Field(0.20, description="Thuế suất TNDN hiệu dụng — giai đoạn dự phóng năm 1–5")
+    terminal_tax_rate: float | None = Field(
+        None,
+        description="Thuế suất biên vĩnh viễn cho NOPAT terminal và lá chắn thuế nợ trong WACC; "
+        "None = theo config (dcf.terminal_tax_mode / sector_tax_rates.default)",
+    )
     debt_ratio: Optional[float] = Field(None, description="Tỷ lệ nợ/tổng nguồn vốn (nếu cố định)")
 
     # Giả định dự phóng (5 năm tiếp theo)
@@ -139,7 +175,10 @@ class Assumptions(BaseModel):
     dso: List[float] = Field(..., description="Days Sales Outstanding (Số ngày phải thu)")
     dio: List[float] = Field(..., description="Days Inventory Outstanding (Số ngày tồn kho)")
     dpo: List[float] = Field(..., description="Days Payable Outstanding (Số ngày phải trả)")
-    
+    deferred_revenue_to_revenue: float = Field(
+        0.0, description="ΔDoanh thu chưa thực hiện / ΔDT (tỷ lệ biên, cửa sổ margin_window_years) — nợ vận hành trừ khỏi NWC"
+    )
+
     # Debt Schedule
     interest_rate: List[float] = Field(..., description="Lãi suất vay trung bình (%)")
     debt_repayment_rate: List[float] = Field(
@@ -167,10 +206,29 @@ class Assumptions(BaseModel):
     weight_dcf: float = Field(0.5, description="Trọng số DCF")
     
     # RNAV & SOTP
-    rnav_revaluation_premium: float = Field(0.2, description="Tỷ lệ đánh giá lại (premium) cho hàng tồn kho (dành cho RNAV BĐS)")
-    rnav_wacc: float = Field(0.11, description="WACC áp dụng cho dự án BĐS")
-    rnav_discount: float = Field(0.40, description="Tỷ lệ chiết khấu NAV của công ty BĐS")
-    sotp_discount: float = Field(0.1, description="Tỷ lệ chiết khấu tập đoàn đa ngành (SOTP)")
+    # Một nguồn sự thật: mặc định đọc config proxy_valuation (trước đây số Pydantic che config).
+    rnav_revaluation_premium: float = Field(
+        default_factory=lambda: float(_proxy_cfg()["rnav_land_premium"]),
+        description="Premium đánh giá lại tồn kho + BĐS đầu tư so giá sổ (proxy RNAV) — mặc định config",
+    )
+    rnav_wacc: float | None = Field(
+        None, description="Suất chiết khấu dòng tiền dự án RNAV; None → mặc định config (WACC: dòng tiền chưa trừ nợ)"
+    )
+    rnav_discount: float = Field(
+        default_factory=lambda: float(_proxy_cfg()["rnav_discount"]),
+        description="Chiết khấu áp lên PHẦN ĐÁNH GIÁ LẠI (không áp lên VCSH sổ sách) — mặc định config",
+    )
+    sotp_discount: float = Field(
+        default_factory=lambda: float(_proxy_cfg()["sotp_holding_discount"]),
+        description="Tỷ lệ chiết khấu holding (SOTP) — mặc định từ config proxy_valuation.sotp_holding_discount",
+    )
+    sotp_holdings: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "Cổ phần niêm yết đã định giá theo thị giá (config/sotp_holdings.yaml, repo.resolve_sotp_holdings); "
+            "None → không khai báo"
+        ),
+    )
     rnav_projects: Optional[List[Dict]] = Field(default_factory=list, description="Danh sách dự án BĐS do AI bóc tách")
     sotp_segments: Optional[List[Dict]] = Field(default_factory=list, description="Danh sách mảng kinh doanh SOTP do AI bóc tách")
     ai_inputs_verified: bool = Field(

@@ -27,6 +27,7 @@ def forecast_company_financials(company: Company) -> List[Dict[str, Any]]:
         base_is.revenue * (dso0 / 365)
         + base_is.revenue * cogs_ratio * (dio0 / 365)
         - base_is.revenue * cogs_ratio * (dpo0 / 365)
+        - base_is.revenue * assumptions.deferred_revenue_to_revenue  # nợ vận hành, như dcf.py
     )
 
     projections = []
@@ -61,6 +62,7 @@ def forecast_company_financials(company: Company) -> List[Dict[str, Any]]:
             rev * (dso / 365)
             + curr_cogs * (dio / 365)
             - curr_cogs * (dpo / 365)
+            - rev * assumptions.deferred_revenue_to_revenue
         )
 
         # 3. Biến động NWC & FCFF

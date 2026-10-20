@@ -91,18 +91,20 @@ class TestGoldenChungKhoan:
         assert drv["terminal_roe"] == pytest.approx(0.12, abs=1e-9)
 
     def test_justified_pb_tinh_tay(self):
-        """P/B = (ROE - g)/(COE - g) = (0,12-0,02)/(0,15-0,02) = 0,10/0,13 = 0,76923"""
+        """P/B = (ROE đầu kỳ - g)/(COE - g); r3a: ROE đầu kỳ = 0,12 × (1 + 0,02/2) = 0,1212 (ROE lịch sử trên VCSH
+        bình quân) → (0,1212 - 0,02)/(0,15 - 0,02) = 0,1012/0,13 = 0,77846"""
         res = self._flat().perform_valuation()
-        assert res["justified_pb"] == pytest.approx(0.769231, abs=1e-5)
-        # FVPS chân P/B = P/B × VCSH / số cp = 0,769231 × 1.000e9 / 100e6 = 7.692,31 đ
-        assert res["pb_fvps"] == pytest.approx(7692.31, rel=1e-4)
+        assert res["justified_pb"] == pytest.approx(0.778462, abs=1e-5)
+        # FVPS chân P/B = P/B × VCSH / số cp = 0,778462 × 1.000e9 / 100e6 = 7.784,62 đ
+        assert res["pb_fvps"] == pytest.approx(7784.62, rel=1e-4)
 
     def test_vcsh_cuon_chieu_dung_ty_le_giu_lai(self):
-        """Năm 1: VCSH 1.000, LNST 120, payout 20% -> VCSH năm 2 = 1.000 + 96 = 1.096 tỷ"""
+        """Năm 1: VCSH 1.000, ROE bình quân 12%, payout 20% -> LNST = 120 / (1 - 0,12 × 0,8 / 2) = 126,0504 (r3a,
+        forecast_bank.ni_from_avg_roe) -> VCSH năm 2 = 1.000 + 0,8 × 126,0504 = 1.100,8403 tỷ"""
         f = self._flat().forecast_drivers()["forecasts"]
         assert f[0]["book_value_start"] == pytest.approx(1000e9)
-        assert f[0]["net_income"] == pytest.approx(120e9)
-        assert f[1]["book_value_start"] == pytest.approx(1096e9, rel=1e-9)
+        assert f[0]["net_income"] == pytest.approx(126.0504e9, rel=1e-6)
+        assert f[1]["book_value_start"] == pytest.approx(1100.8403e9, rel=1e-6)
 
     def test_roe_duoi_coe_thi_ri_am_va_co_co_bao(self):
         """ROE 12% < COE 15% -> công ty chưa tạo thêm giá trị -> P/B < 1, phải báo."""
@@ -158,7 +160,7 @@ def _ins_model(ni, eq, coe=0.13, g=0.02, **over):
         "current_price": 10000.0,
     }
     a = {"cost_of_equity": coe, "long_term_growth": g, "risk_free_rate": 0.20,
-         "norm_years": 5, "roe_sanity_min": 0.0, "roe_sanity_max": 0.30,
+         "roe_sanity_min": 0.0, "roe_sanity_max": 0.30,
          "terminal_roe_floor": 0.04, "terminal_roe_cap": 0.16,
          "payout_ratio": 0.30, "weight_ri": 0.5, "forecast_years": 5, **over}
     return InsuranceValuationModel("TESTINS", cf, a)
@@ -166,15 +168,18 @@ def _ins_model(ni, eq, coe=0.13, g=0.02, **over):
 
 class TestGoldenBaoHiem:
     def test_justified_pb_tinh_tay(self):
-        """ROE 10%, COE 13%, g 2% -> P/B = (0,10-0,02)/(0,13-0,02) = 0,08/0,11 = 0,72727"""
+        """ROE 10% (VCSH bình quân), COE 13%, g 2% -> ROE đầu kỳ 0,10 × 1,01 = 0,101 (r3a) -> P/B =
+        (0,101-0,02)/(0,13-0,02) = 0,081/0,11 = 0,73636"""
         res = _ins_model(ni=[100.0] * 6, eq=[1000.0] * 6).perform_valuation()
         assert res["terminal_roe"] == pytest.approx(0.10, abs=1e-9)
-        assert res["justified_pb"] == pytest.approx(0.727273, abs=1e-5)
-        assert res["pb_fvps"] == pytest.approx(7272.73, rel=1e-4)
+        assert res["justified_pb"] == pytest.approx(0.736364, abs=1e-5)
+        assert res["pb_fvps"] == pytest.approx(7363.64, rel=1e-4)
 
-    def test_cua_so_chuan_hoa_dai_hon_chung_khoan(self):
-        """Bảo hiểm dùng 5 kỳ (chu kỳ lãi suất) thay vì 3 kỳ như CK."""
-        assert _ins_model([100.0] * 6, [1000.0] * 6).assumptions["norm_years"] == 5
+    def test_cua_so_chuan_hoa_theo_d61(self):
+        """Bảo hiểm dùng cửa sổ forecast.margin_window_years (4) như ROE mid-cycle CK (D61), không còn 5 kỳ:
+        ROE 7%, 7%, 10%, 12%, 14%, 16% → trung vị 4 kỳ cuối (10; 12; 14; 16) = 13%."""
+        res = _ins_model([0.0, 70.0, 70.0, 100.0, 120.0, 140.0, 160.0], [1000.0] * 7).forecast_drivers()
+        assert res["roe_norm"] == pytest.approx(0.13)
 
     def test_roe_phi_ly_thi_tu_choi_dinh_gia_chu_khong_kep(self):
         """Lợi nhuận bị map nhầm từ doanh thu phí -> ROE vọt -> NOT_RATED.

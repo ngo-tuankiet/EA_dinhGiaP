@@ -8,6 +8,7 @@ import statistics
 import pytest
 
 from valuation.db.session import SessionLocalRead
+from valuation.config import load_defaults
 from valuation.data_access.repo import build_company_data
 
 
@@ -21,8 +22,10 @@ def db():
 def test_ebit_margin_is_median_not_mean(db):
     c = build_company_data(db, "DCM", mode="TTM")
     margins = [is_.ebit / is_.revenue for is_ in c.historical_is if is_.revenue > 0]
-    expected_median = statistics.median(margins)
-    # ebit_margin dùng trong assumptions = median lịch sử (clamp >= 0)
+    # D61: median trong cửa sổ gần đây (config forecast.margin_window_years), không lấy cả 9 năm
+    win = load_defaults()["forecast"]["margin_window_years"]
+    expected_median = statistics.median(margins[-win:])
+    # ebit_margin dùng trong assumptions = median cửa sổ gần đây (clamp >= 0)
     assert c.assumptions.ebit_margin[0] == pytest.approx(max(expected_median, 0.0), abs=1e-6)
     # Với cyclical (DCM có năm đỉnh 2022), median < mean → chống extrapolate đỉnh
     assert statistics.median(margins) <= statistics.mean(margins) + 1e-9

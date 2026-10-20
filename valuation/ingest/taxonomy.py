@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from functools import lru_cache
@@ -55,6 +56,40 @@ def taxonomy_to_legacy_long(frame: pd.DataFrame, statement: str) -> pd.DataFrame
         raise ValueError("Đơn vị chỉ tiêu taxonomy chưa được hỗ trợ")
     data["value"] = pd.to_numeric(data["value"], errors="raise") * factor
     return data[["line_item", "period", "value"]]
+
+
+def critical_periods(rows, year_from: int) -> set[tuple[int, int]]:
+    """Các kỳ (năm, quý; quý 0 = năm) có ô publication_critical_items từ year_from."""
+    critical = set(taxonomy_mapping()["publication_critical_items"])
+    return {
+        (int(r.fiscal_year), int(r.fiscal_quarter))
+        for r in rows
+        if r.fiscal_year >= year_from and r.line_item in critical
+    }
+
+
+def source_fingerprint(rows, year_from: int, periods: set[tuple[int, int]]) -> str:
+    """sha1 mọi phiên bản (restated hay không) của các ô publication_critical_items từ
+    year_from, CHỈ trong các kỳ `periods` đã đối chiếu nguồn. Audit lưu dấu này; số đã đối
+    chiếu đổi sau audit → khác dấu → SOURCE_AUDIT_STALE. Kỳ mới nạp sau audit không đổi dấu
+    (repo gắn SOURCE_AUDIT_PARTIAL). `rows`: bản ghi FinancialsQuarterly hợp nhất, VND.
+    """
+    critical = set(taxonomy_mapping()["publication_critical_items"])
+    cells = sorted(
+        (
+            str(r.statement),
+            int(r.fiscal_year),
+            int(r.fiscal_quarter),
+            str(r.line_item),
+            int(bool(r.is_restated)),
+            repr(float(r.value)) if r.value is not None else "None",
+        )
+        for r in rows
+        if r.fiscal_year >= year_from
+        and r.line_item in critical
+        and (int(r.fiscal_year), int(r.fiscal_quarter)) in periods
+    )
+    return hashlib.sha1(repr(cells).encode("utf-8")).hexdigest()
 
 
 def classify_source_value(existing: float | None, source: float, line_item: str) -> str:

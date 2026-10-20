@@ -70,6 +70,10 @@ def apply_scenario_adjustments(company: Union[Company, CompanyBank], scenario: s
         roe_delta = sec.get("sustainable_roe_delta")
         if roe_delta and getattr(a, "sustainable_roe", None):
             a.sustainable_roe = max(0.0, a.sustainable_roe + roe_delta)
+        # ROE terminal hội tụ về ROE ngành: λ = 1 thì sốc chỉ trên ROE riêng mất tác dụng → sốc cả đích.
+        ab = comp_copy.assumptions if isinstance(comp_copy, CompanyBank) else None
+        if roe_delta and ab is not None and ab.industry_roe is not None:
+            ab.industry_roe = max(0.0, ab.industry_roe + roe_delta)
     else:
         g_delta_rev = float(sec.get("revenue_growth_delta", 0.0))
         a.revenue_growth = [

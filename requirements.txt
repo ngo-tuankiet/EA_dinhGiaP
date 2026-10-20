@@ -8,6 +8,7 @@ openpyxl
 pandas
 plotly==7.0.0
 kaleido==1.5.0  # Plotly xuất ảnh tĩnh cho PDF/Word; cần Chrome (VPS: kaleido_get_chrome)
+playwright==1.64.0  # Xuất PDF báo cáo (HTML → PDF) bằng Chrome; VPS: playwright install chromium
 pydantic
 pydantic-settings
 python-dotenv

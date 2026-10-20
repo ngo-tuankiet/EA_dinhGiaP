@@ -41,6 +41,56 @@ def active_event_hold(ticker: str, as_of, holds: dict | None = None) -> dict | N
     return hold if date.fromisoformat(str(hold["since"])) <= as_of else None
 
 
+SOTP_HOLDINGS_FILE = PROJECT_ROOT / "config" / "sotp_holdings.yaml"
+
+
+@lru_cache(maxsize=1)
+def load_sotp_holdings() -> dict:
+    """Cổ phần niêm yết của các tập đoàn SOTP (config/sotp_holdings.yaml, chế độ SOTP_HOLDINGS)."""
+    if not SOTP_HOLDINGS_FILE.exists():
+        return {}
+    with open(SOTP_HOLDINGS_FILE, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def sotp_holding_tickers() -> set[str]:
+    """Mọi mã công ty con/liên kết niêm yết khai trong config/sotp_holdings.yaml (viết hoa)."""
+    holders = (load_sotp_holdings().get("holders") or {}).values()
+    return {str(h["ticker"]).upper() for e in holders for h in e.get("holdings") or []}
+
+
+def sotp_holdings_for(ticker: str, cfg: dict | None = None) -> dict | None:
+    """Khai báo holdings đã kiểm tra hợp lệ của mã, hoặc None. Sai cấu trúc → ValueError (không đoán)."""
+    cfg = load_sotp_holdings() if cfg is None else cfg
+    holders = {k.upper(): v for k, v in (cfg.get("holders") or {}).items()}
+    entry = holders.get(ticker.upper())
+    if not entry:
+        return None
+    holdings = entry.get("holdings") or []
+    if not holdings:
+        raise ValueError(f"sotp_holdings.yaml: {ticker} khai báo nhưng không có holding nào")
+    for h in holdings:
+        sub = str(h.get("ticker") or "").upper()
+        stake = h.get("stake")
+        if not sub or not isinstance(stake, (int, float)) or not 0 < stake <= 1:
+            raise ValueError(f"sotp_holdings.yaml: {ticker}/{sub or '?'} cần ticker và 0 < stake ≤ 1")
+        if not str(h.get("source") or "").startswith("https://"):
+            raise ValueError(f"sotp_holdings.yaml: {ticker}/{sub} thiếu source (URL https)")
+        if sub in holders:
+            raise ValueError(f"sotp_holdings.yaml: {sub} vừa là holding của {ticker} vừa là holder (đệ quy)")
+    if entry.get("reviewed_by"):
+        # Không có ngày duyệt thì TTL review_ttl_days không bao giờ hết hạn → bắt buộc as_of hợp lệ.
+        from datetime import date
+
+        try:
+            date.fromisoformat(str(entry.get("as_of") or "")[:10])
+        except ValueError:
+            raise ValueError(
+                f"sotp_holdings.yaml: {ticker} có reviewed_by nhưng as_of thiếu/sai (YYYY-MM-DD)"
+            ) from None
+    return {**entry, "review_ttl_days": int(cfg["review_ttl_days"])}
+
+
 _defaults = load_defaults()
 
 
@@ -93,6 +143,8 @@ class Settings(BaseSettings):
     recompute_webhook_token: str = Field(default="")
     deepseek_api_key: str = Field(default="")
     discord_bot_token: str = Field(default="")
+    discord_owner_id: str = Field(default="")
+    discord_channel_id: str = Field(default="")
 
     erp_vn: float = Field(default=_defaults.get("erp_vn", 8.5))
 

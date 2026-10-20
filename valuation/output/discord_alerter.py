@@ -82,7 +82,7 @@ def notify_discord(
         if footer:
             embed.set_footer(text=footer)
         webhook.add_embed(embed)
-    webhook.execute()
+    return webhook.execute()  # để job theo lịch kiểm tra status_code, không báo "đã gửi" khi lỗi
 
 
 def send_daily_alerts(trade_date: datetime.date = None, db: Session = None):

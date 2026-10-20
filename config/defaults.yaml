@@ -24,6 +24,10 @@ coe_convention:
   crp_vn: 0.037       # Country Risk Premium VN (Damodaran 2024-2025 ≈ 3.7%)
   erp_total: 0.082    # erp_mature + crp_vn — ERP ĐANG DÙNG cho COE (get_erp)
   beta_default: 1.0
+  # Beta ngành bottom-up (ttm_helper.sector_peer_beta: trung vị Blume các mã cùng nhóm routing.json có
+  # ≥ 52 tuần giá) thay beta hồi quy riêng. NH: D47. CK: beta riêng 0,68–1,5 (trần), 3 mã mới niêm yết
+  # không có beta. BH chưa dùng: BMI/MIG beta thô kẹp sàn 0,5 và giá ngừng từ 09/2026.
+  peer_beta_groups: [NH, CK]
   # Tăng trưởng vĩnh viễn DUY NHẤT cho DCF/DDM/RI (danh nghĩa VND). Damodaran: g ≤ rf.
   # 2% cũ < lạm phát (CPI 4,7-5,6%) = tăng trưởng thực âm ~3%/năm vĩnh viễn.
   terminal_growth: 0.04
@@ -89,6 +93,7 @@ margin_of_safety:
 # build_company_data): doanh thu các DN phi tài chính được fade từ median
 # lịch sử (năm 1) về mức này (năm 5) — mean-reversion, chống extrapolate
 # tăng trưởng đỉnh chu kỳ. ~8% = GDP thực VN ~6% + lạm phát ~2-3%.
+# Cũng là đích năm 5 của tăng trưởng tín dụng ngân hàng (bank_forecast).
 # ===================================================================
 long_run_nominal_gdp_growth: 0.08
 
@@ -99,7 +104,8 @@ long_run_nominal_gdp_growth: 0.08
 # fallback khi lịch sử không đủ dữ liệu (< 3 năm).
 # ===================================================================
 sector_tax_rates:
-  default: 0.20          # Thuế TNDN phổ thông 20%
+  default: 0.20          # Thuế TNDN phổ thông 20% — cũng là thuế trên phần đánh giá lại RNAV/quỹ đất
+                         # (thu nhập chuyển nhượng BĐS không hưởng ưu đãi; thuế hiệu dụng bị méo bởi lãi LDLK)
   banks: 0.20
   securities: 0.20
   insurance: 0.20
@@ -184,8 +190,15 @@ proxy_valuation:
   # D28 — proxy lệch quá mức này so THỊ GIÁ ⇒ NOT_RATED, không xuất bản số.
   # Proxy sổ sách/lợi nhuận không mô tả được tập đoàn đa ngành (VIC lệch -92%).
   proxy_max_divergence: 0.50
-  rnav_land_premium: 0.30        # đánh giá lại hàng tồn kho BĐS + BĐS đầu tư so giá sổ
-  rnav_weight_nav: 0.7           # trọng số NAV vs P/B trong blend RNAV
+  # Proxy RNAV: thặng dư = (tồn kho + BĐS đầu tư) × premium × (1 − thuế TNDN) × (1 − rnav_discount).
+  # GIẢ ĐỊNH NỘI BỘ, CHƯA CÓ NGUỒN — đặt bằng đúng số đang chạy thực tế trước s6 (Pydantic 0,2/0,4 che
+  # config 0,30; code dự phòng 0,45 không bao giờ chạy). Người dùng chỉnh trên UI (mục 4).
+  rnav_land_premium: 0.20
+  rnav_discount: 0.40            # chiết khấu chỉ áp lên PHẦN ĐÁNH GIÁ LẠI (proxy và AI_RNAV), không áp lên VCSH sổ sách
+  # Suất chiết khấu mặc định cho dòng tiền dự án AI_RNAV (khi analyst không nhập rnav_wacc). Dòng tiền dự án là
+  # dòng tiền TRƯỚC tài trợ (nợ vay dự án nằm trong VCSH mẹ hợp nhất) → cặp đúng là WACC (Damodaran: dòng
+  # tiền chưa trừ nợ ↔ WACC; sau nợ ↔ COE). 'coe' = cách cũ s6 (thận trọng hơn nhưng lệch cặp).
+  rnav_project_discount_rate: wacc
   sotp_operating_pe: 11.0        # bội số LN cho giá trị mảng vận hành (holding)
   sotp_earnings_weight: 0.6      # trọng số định giá theo LN vs NAV sổ sách
   sotp_holding_discount: 0.10    # chiết khấu holding
@@ -223,6 +236,8 @@ macro_sources:
     - api2.simplize.vn              # Simplize API JSON: khuyến nghị đa CTCK (FPTS/MAS/VPBS/BVSC/YUANTA/DSC/KIS...) + link PDF
     - cdn.simplize.vn               # CDN chứa PDF báo cáo CTCK (attachedLink) — tải nội bộ tham khảo
     - fred.stlouisfed.org           # FRED (Fed St. Louis): lãi suất Fed, TPCP Mỹ 10Y — CSV công khai, không cần key (người dùng duyệt 10/10/2026)
+    - www.worldbank.org             # World Bank Pink Sheet: giá quặng sắt/than theo tháng từ 1960 (người dùng duyệt 18/10/2026)
+    - thedocs.worldbank.org         # nơi chứa file CMO-Historical-Data-Monthly.xlsx
   request_timeout_sec: 15
   user_agent: "antigravity-vn100-macro/1.0"
   # Nguồn TPCP_10Y đang dùng: worldgovernmentbonds.com (đường cong đầy đủ, dữ
@@ -338,43 +353,148 @@ securities:                 # CTCK: SSI VND VCI HCM VIX FTS BSI
   capital_deployment_years: 3   # số năm vốn mới huy động giải ngân hết vào margin
   terminal_roe_floor: 0.05
   terminal_roe_cap: 0.20    # ROE mid-cycle thực đo của 7 CTCK: 8.9%-13.1%
+  # Payout giai đoạn dự phóng = Σ cổ tức tiền đã trả / Σ LNST 3 năm tài chính đầy đủ gần nhất (như
+  # D47 cho NH). payout_ratio chỉ là dự phòng khi thiếu dữ liệu (cờ *_PAYOUT_FALLBACK). Trần 1,0:
+  # chi quá LNST là trả bằng vốn, không bền vững (DSE 2024 chia 330 tỷ trên LN 182 tỷ trước IPO).
   payout_ratio: 0.20
+  payout_cap: 1.0
+  payout_years: 3
   weight_ri: 0.5
   forecast_years: 5
 
 insurance:                  # Bảo hiểm: BVH BMI MIG
-  norm_years: 5             # chu kỳ lãi suất dài hơn chu kỳ thanh khoản
+  # Cửa sổ ROE chuẩn hóa = forecast.margin_window_years (D61), không còn 5 kỳ riêng.
   roe_sanity_min: 0.0
   roe_sanity_max: 0.30      # ngoài khoảng -> nghi map nhầm doanh thu phí, NOT_RATED
   terminal_roe_floor: 0.04
   terminal_roe_cap: 0.16    # ROE mid-cycle thực đo của 3 DN: 8.6%-12.6%
-  payout_ratio: 0.30
+  payout_ratio: 0.30        # dự phòng khi thiếu dữ liệu cổ tức; như securities
+  payout_cap: 1.0
+  payout_years: 3
   weight_ri: 0.5
   forecast_years: 5
 
 audit:
   # Mã lệch quá dải này so với trung vị giá mục tiêu CTCK phải có giải thích (không ép khớp).
   consensus_review_band: 0.25
-  # Phần dư "tài sản ngắn hạn khác" / tài sản ngắn hạn vượt ngưỡng → cờ nghi mất dòng khi nạp.
-  unexplained_current_assets_share: 0.35
+  # Mẫu B01-DN: TSNH (100) = tiền (110) + ĐTNH (120) + phải thu ngắn hạn (130, TỔNG mục)
+  # + tồn kho (140) + TSNH khác (150). Chênh |100 − tổng 5 mục| / TSNH vượt ngưỡng → cờ nghi
+  # mất dòng khi nạp (vd tài sản sinh học TT99/2025 chưa có ID taxonomy: BAF 45%, DBC 19%).
+  unexplained_current_assets_gap: 0.05
+  # F2c — SOURCE_CONFLICT chỉ là cảnh báo khi đã ĐO được |ΔFV| (thay ô xung đột bằng số
+  # nguồn, ghi đè trong bộ nhớ) ≤ ngưỡng này (%). Thiếu số đo → vẫn chặn (fail-closed).
+  source_conflict_fv_materiality_pct: 1.0
+  # FILING_PRECEDENCE (scripts/audit_vn100_data.py): ô DB là filing đã soát xét (restated) chỉ được ưu tiên
+  # hơn vendor khi nguồn là https thuộc tên miền dưới đây (tổ chức phát hành / sở / UBCK / VSDC) VÀ
+  # |filing − vendor| / max ≤ ngưỡng. Lệch lớn hơn vẫn là xung đột (đo ΔFV theo F2c): GAS Q2/2026 tồn kho
+  # lệch 9,3% vì filing ghi số net vào khóa gross. Đề xuất claude 20/10/2026 (5% ≈ mức trọng yếu tổng
+  # thể thường dùng trong kiểm toán) — chờ phi duyệt.
+  filing_precedence_max_rel_diff: 0.05
+  filing_source_domains: [pvtrans.com, pvgas.com.vn, hsx.vn, hnx.vn, ssc.gov.vn, vsd.vn, vsdc.vn]
+  # Số kỳ (quý; năm = một kỳ) nạp sau audit mà chưa đối chiếu nguồn tối đa còn được công bố với cảnh báo
+  # SOURCE_AUDIT_PARTIAL. Vượt → SOURCE_AUDIT_STALE (chặn): không để TTM/FV dựa vô thời hạn trên số chưa
+  # từng so nguồn. 2 = một mùa BCTC quý (Q) chưa audit vẫn công bố; tới mùa Q4 + năm mà chưa audit lại thì
+  # chặn. Đề xuất claude r3b 20/10/2026 — chờ phi duyệt.
+  max_unaudited_periods: 2
+
+# Cổng công bố (valuate._apply_publication_gate): kết quả cực đoan phải rà soát trước khi
+# phát hành; số chẩn đoán vẫn giữ.
+publication_gate:
+  upside_extreme_review_pct: 150.0     # FV > 2,5× thị giá
+  downside_extreme_review_pct: -60.0   # FV < 0,4× thị giá
+  # Hai chân định giá được pha (cả hai trọng số > 0) lệch nhau quá max/min này, hoặc một chân ≤ 0 → cờ
+  # VALUATION_LEGS_DIVERGE chặn công bố: trung bình của hai số vênh nhau không phải giá trị hợp lý.
+  # Áp chung (guardrails.legs_diverge): DCF vs bội số, RI vs P/B của CK/BH (securities.py, insurance.py)
+  # và NH (valuate). Trước fx2 (20/10/2026) nằm ở dcf.leg_ratio_review, chỉ DCF dùng — khóa cũ vẫn đọc được.
+  # Không có chuẩn duy nhất — mức chẩn đoán đề xuất; quét 19/10/2026: chặn thêm POW 4,5x, FRT 3,7x (người
+  # dùng duyệt lại). Sau s4: FRT 3,4x, NKG 3,1x, KDC 4,2x, HSG 6,3x vẫn chặn. fx2: DSE RI/P/B 10,8x bị chặn.
+  # QUYẾT ĐỊNH NGƯỜI DÙNG (owner: phi, 20/10/2026, Q2): 3,0 → 5,0. Mã mở lại → luật hold mã mới mở bên dưới (r4a).
+  leg_ratio_review: 5.0
+  # Luật hold mã MỚI mở công bố (vừa hết cờ chặn: đổi phương pháp, nới ngưỡng, người dùng điền reviewed_by...):
+  # lệch đồng thuận CTCK > new_listing_hold_dev với ≥ new_listing_hold_min_brokers CTCK, hoặc upside >
+  # new_listing_hold_upside_pct, mà mục registry chưa được người dùng duyệt → hold trong config/event_holds.yaml
+  # (lift_when = người dùng duyệt). Luật cho agent khi sửa event_holds (manual §13), engine không tự áp.
+  # Thống nhất fin_a 20/10/2026 (fx3/manual ghi 30%, r4a ghi 40% n ≥ 3) theo r4a — đề xuất claude, chờ phi duyệt.
+  new_listing_hold_dev: 0.40
+  new_listing_hold_min_brokers: 3
+  new_listing_hold_upside_pct: 100.0
 
 # D45 — DCF phi tài chính.
 dcf:
   # Doanh thu / vốn đầu tư vận hành (Damodaran "sales to capital"): CapEx mặc định =
   # khấu hao + Δdoanh thu × (1/hệ số − vốn lưu động/DT) → tái đầu tư khớp tăng trưởng thay
   # cho CapEx/DT lịch sử giữ phẳng 5 năm (GMD 28% suốt kỳ dù tăng trưởng giảm về 4,7%).
-  # Dải kẹp theo phổ ngành của Damodaran (hạ tầng ~0,3 → phần mềm/bán lẻ ~5).
-  sales_to_capital_band: [0.3, 5.0]
+  # Sàn 0,3 (hạ tầng thâm dụng vốn, Damodaran). KHÔNG kẹp trên (null; bỏ trần 5,0 ngày 19/10/2026):
+  # VAS không vốn hóa thuê hoạt động — EBIT đã trừ tiền thuê, vốn vận hành không có tài sản thuê —
+  # nên DN bán lẻ/phân phối có hệ số tự đo cao (PLX 29, MWG 15, CTR 19). Kẹp 5 làm ROIC biên ngụ ý
+  # (s2c × biên × (1 − t)) của PLX còn 3,2% so với ROIC thực đo 14–18%: tăng trưởng phá hủy giá trị
+  # giả. Đo 100 mã: không mã nào trong band ±20% CTCK bị đẩy ra (PLX −29,8% → −17,1%).
+  sales_to_capital_band: [0.3, null]
+  # Thuế suất hiệu dụng = Σthuế (có dấu) / Σ(LNTT mã 50 − lãi/lỗ LD/LK) của 3 năm tài chính có thu nhập
+  # chịu thuế dương gần nhất (repo.effective_tax_rate; fx1: lãi LD/LK là LN sau thuế, không chịu thuế lại),
+  # kẹp dải này (dải cũ nằm cứng trong code). Thiếu LNTT → cách cũ + cờ.
+  effective_tax_band: [0.05, 0.25]
+  # Nhánh P/E phụ của DCF: TTM = P/E trailing lịch sử × LN TTM (cùng định nghĩa tử/mẫu; mã chu kỳ
+  # dùng LN giữa chu kỳ). MEDIAN3 = trung vị LN 3 năm tuyệt đối (cũ, để quay lui).
+  pe_leg_earnings: TTM
+  # Thuế cho NOPAT terminal (Damodaran, Investment Valuation ch.10): thuế hiệu dụng (Σthuế/ΣLNTT, gồm ưu đãi
+  # CÓ THỜI HẠN) chỉ dùng cho năm 1–5; giá trị cuối kỳ vĩnh viễn dùng thuế suất biên = sector_tax_rates.default
+  # (thuế TNDN phổ thông 20%). 'effective' = cách cũ (thuế hiệu dụng cả terminal). Hạn chế: ưu đãi dài hạn
+  # theo luật (vd phần mềm 10%) không được giữ ở terminal — người dùng chọn 'effective' nếu có căn cứ.
+  terminal_tax_mode: marginal
+  # Lá chắn thuế nợ trong WACC (wacc.company_wacc — DCF, RNAV, báo cáo): Damodaran (Investment Valuation, chi phí
+  # vốn) Rd sau thuế = Rd·(1 − thuế BIÊN) vì lãi vay giảm thuế ở mức biên → cùng thuế với NOPAT terminal
+  # (thuế terminal người dùng nhập, None = sector_tax_rates.default). 'effective' = cách cũ (thuế hiệu dụng
+  # năm 1–5, vd GEG 12,9%) để quay lui. Phản biện r3a đo: GEG FV +6,5%, BWE +3,7%, HDG +3,6%, POW +3,1%.
+  wacc_tax_mode: marginal
+  # Doanh thu chưa thực hiện là nợ vận hành gắn doanh thu (ΔDR = tỷ lệ biên × ΔDT trong NWC) CHỈ với mã
+  # khai báo: KCN cho thuê thu tiền thuê đất trả trước theo hợp đồng (SIP). Mã khác (cao su/KCN đền bù như
+  # PHR, GVR, DPR; FRT, VPL) DR là khoản trả trước/đền bù không gắn doanh thu → tỷ lệ 0 (mặc định).
+  deferred_revenue_operating_tickers: [SIP]
+  # Cầu nối FCFF trừ lợi ích CĐKKS theo GIÁ SỔ (Damodaran: nên trừ giá trị ước tính của phần CĐKKS). Chưa
+  # có phương pháp chuẩn ước giá trị thị trường từ dữ liệu sẵn có → chỉ gắn cờ MINORITY_AT_BOOK_MATERIAL
+  # (warning, không đổi FV) khi CĐKKS / VCSH mẹ vượt ngưỡng. Phản biện 20/10: GMD (13,8%) −8,6%, PLX (13,3%)
+  # −6,5%, HDG (22,5%) −7,7% nếu trừ theo P/B ngụ ý. ĐỀ XUẤT claude 10% — chờ phi duyệt.
+  minority_book_review: 0.10
+  # XDCB dở dang (mã 242) cộng theo sổ sách vào cầu nối EV (NPV = 0). CIP / vốn chủ DCF (sau khi
+  # cộng) vượt ngưỡng → cờ CIP_DOMINATES_VALUE chặn công bố: giá trị chủ yếu là giả định sổ sách của
+  # dự án dở dang (NKG 232%, HSG 117% theo chẩn đoán). Không có chuẩn duy nhất — mức chẩn đoán đề xuất.
+  cip_share_review: 0.5
 
 # Bội số so sánh = trung vị 5 cuối năm của CHÍNH mã (repo.own_history_multiple).
 # Ngoài dải → coi là nhiễu (năm LN đáy/đỉnh) và dùng hằng số ngành, gắn cờ.
 relative_multiples:
   pe: [3.0, 40.0]
   ev_ebitda: [2.0, 25.0]
+  pb: [&pb_floor 0.3, &pb_ceiling 4.0]   # trung vị P/B nhóm (định chế tài chính); = relative_pb
+  # Phát hành CÓ THU TIỀN (RIGHTS_ISSUE, PRIVATE_PLACEMENT) có ngày: giá lịch sử (đã điều chỉnh) × số cp
+  # HIỆN TẠI = vốn hóa thật + tiền thu (quyền mua) hoặc + số cp mới × giá (riêng lẻ) trong khi VCSH/LN năm cũ
+  # chưa có khoản tiền đó → bội số năm trước đợt phát hành bị phình (DSE 2,33x → ~2,1x pro-forma). Loại các
+  # quan sát có cuối kỳ trước ngày hoàn tất (quyền mua: ngày niêm yết, thiếu thì GDKHQ; riêng lẻ: ngày VCI ghi
+  # ở ex_right_date) của đợt có GDKHQ ≤ as_of; còn < 3 quan sát sạch → trung vị nhóm + cờ (như cũ). Đợt có tỷ
+  # lệ < ngưỡng bỏ qua (méo ≤ tỷ lệ); tỷ lệ 0/thiếu = chưa rõ → coi là trọng yếu. ĐỀ XUẤT claude — chờ duyệt.
+  capital_raise_min_ratio: 0.05
+  # Chỉ áp cho nhóm routing này (CK/BH: chân P/B của securities.py/insurance.py). Đo fx2 khi áp cho MỌI nhóm
+  # (20/10/2026): không an toàn — thiếu giá phát hành để pro-forma nên thay bằng trung vị nhóm/hằng số ngành,
+  # đổi FV gấp nhiều lần độ méo và có khi NGƯỢC chiều méo: NH SHB P/B 0,72x → trung vị 1,22x (FV +34%), MBB
+  # +10%; DCF GMD −25%, DBC −24%, VTP −33%, MCH −16% (rơi về hằng số ngành/nhóm nhỏ). Mở rộng khi có giá phát
+  # hành (pro-forma cộng tiền thu vào mẫu số).
+  capital_raise_exclusion_groups: [CK, BH]
+  # r3a (phản biện vòng 2): thay vì bỏ quan sát rồi rơi về trung vị nhóm (đổi phương pháp, có khi ngược chiều méo
+  # — VIX +14,6%), P/B trước phát hành PRO-FORMA = vốn hóa (giá đã điều chỉnh × số cp hiện tại) / (VCSH_y + C):
+  # C = tiền thu phát hành (LCTT quý "Tiền thu từ phát hành cổ phiếu, nhận vốn góp") các quý từ GDKHQ tới hoàn
+  # tất, ghi sau cuối kỳ y. CHỈ khi ước đáng tin: đủ số liệu, C > 0 và Δ(vốn góp + thặng dư) cùng cửa sổ ≥ (1 −
+  # tol) × C; không thì loại như fx2 + cờ. Chỉ P/B (bội số LN/EBITDA vẫn loại). false = cách fx2 để quay lui.
+  # Ca tay: vốn hóa 130, VCSH 50, C 30 → 1,625x (thô 2,6x). ĐỀ XUẤT claude — chờ phi duyệt (cả dung sai 10%).
+  capital_raise_proforma: true
+  capital_raise_proceeds_tol: 0.10
+
+peer_multiples:             # D62: thiếu lịch sử bội số → trung vị bội số HIỆN HÀNH nhóm routing.json
+  min_peers: 3              # cùng ngưỡng ≥3 quan sát của own_history_multiple; ít hơn → hằng số ngành
 
 relative_pb:                # sàn/trần P/B mục tiêu (pb_relative.py)
-  floor: 0.3
-  ceiling: 4.0
+  floor: *pb_floor
+  ceiling: *pb_ceiling
 
 guardrails:                 # ngưỡng bắn CỜ (không kẹp giá trị)
   fv_below_price_alarm: 0.40
@@ -395,9 +515,33 @@ bank_terminal:
   # Chi phí tín dụng chuẩn hóa = MEDIAN N năm tài chính ĐẦY ĐỦ gần nhất (loại kỳ TTM:
   # TTM chồng năm trước nên đếm một quý trích lập đột biến hai lần — STB/EIB Q4/2025).
   credit_cost_window: 3
-  # D47: dự phóng = max(TTM, trung vị); TTM > N × trung vị coi là trích lập đột biến một lần
-  # (STB Q4/2025) → giữ trung vị + cờ BANK_CREDIT_COST_SPIKE.
-  credit_cost_spike_multiple: 2.0
+  # Dự phóng phai TUYẾN TÍNH từ TTM (năm 1) về trung vị chuẩn hóa (năm 5), đối xứng cả hai chiều
+  # (thay luật max(TTM, trung vị) của D47: giảm không bao giờ được phản ánh — VPB/CTG). TTM > N ×
+  # trung vị coi là trích lập đột biến một lần (STB Q4/2025) → giữ trung vị + cờ BANK_CREDIT_COST_SPIKE.
+  credit_cost_spike_multiple: 1.5  # D61: 2,0 bỏ sót EIB (TTM 1,69× trung vị đã chứa năm đột biến)
+  # ROE terminal hội tụ về ROE trung bình ngành (Damodaran, "Valuing Financial Service Firms": giai
+  # đoạn ổn định ROE hội tụ về trung bình ngành/COE): ROE_T = roe5 + λ·(ROE ngành − roe5), rồi mới
+  # áp sàn/trần. ROE ngành = trung vị các NH routing.json của trung vị ROE `roe_window` năm tài chính
+  # đầy đủ. λ = 1: hội tụ đầy đủ như chuẩn giai đoạn ổn định; 0 = ROE riêng giữ vĩnh viễn (cũ).
+  # QUYẾT ĐỊNH NGƯỜI DÙNG (owner: phi, 20/10/2026, Q1): λ = 0,5 — ROE terminal = nửa ROE riêng, nửa ROE ngành
+  # (giữ một phần phân hoá chất lượng NH; λ = 1 xoá phân hoá — phản biện 20/10: MSB/BID/VIB/TPB lệch CTCK).
+  roe_convergence: 0.5
+  # MỘT định nghĩa ROE (fx2): LNST / VCSH BÌNH QUÂN (cuối năm trước, cuối năm) cho roe5, ROE ngành (năm tài
+  # chính đầy đủ liền kề, bỏ kỳ TTM chưa trọn năm) và trung vị lịch sử đối chiếu. Nơi dùng RI terminal/P/B
+  # hợp lý cần ROE trên VCSH ĐẦU kỳ: ở trạng thái dừng VCSH tăng g nên VCSH bình quân năm 6 = B5·(1 + g/2) →
+  # LN6 = ROE_T·B5·(1 + g/2), P/B hợp lý = (ROE_T(1 + g/2) − g)/(COE − g) (bank_general).
+  # Mô hình 3 giai đoạn (Damodaran): năm 1 → (5 − N) theo driver (NIM/CIR/chi phí tín dụng); N năm cuối ROE
+  # bình quân phai tuyến tính từ ROE driver về ROE_T (trọng số 1/N … 1) → năm 5 = ROE_T, LN năm 6 nối liền
+  # năm 5 (trước fx2 λ = 1 làm LN nhảy bậc: EIB +271%, VPB +83%). Phần chênh ghi ở dòng roe_fade_adjustment
+  # (cấp LNTT) của dự phóng để bảng IS vẫn khớp.
+  roe_transition_years: 3
+  # Dòng cân phai ROE tính từ driver GỐC (AssumptionsBank.driver_base — repo chụp lúc dựng); driver analyst/
+  # kịch bản sửa cộng thẳng: LN = LN_phai(gốc) + (LN_driver_sửa − LN_driver_gốc) trên cùng trạng thái đầu kỳ
+  # (r4a; cơ chế r3a "năm theo driver" bỏ dòng cân trong khi RI terminal vẫn theo ROE_T → đảo dấu, phản biện
+  # r3). Phai chính driver về mức ngụ ý ROE_T cần chọn driver nào gánh phần chênh — không có chuẩn CFA/Damodaran
+  # nên chưa làm. Phần LN năm 5 do dòng cân ≥ ngưỡng → cờ BANK_ROE_FADE_PLUG:x% (cảnh báo, không chặn).
+  # ĐỀ XUẤT claude 10% — chờ phi duyệt.
+  fade_plug_flag_share: 0.10
   roe_fallback: 0.15
   # Trần DUY NHẤT thay cho hệ thống tier 15%/20% của D20: tier tạo vách đứng phi
   # kinh tế ở ngưỡng 18% (17,9% -> trần 15%; 18,1% -> trần 20%).
@@ -412,6 +556,9 @@ bank_terminal:
 # Guardrail dự phóng ngân hàng: YoY một quý là tín hiệu hiện tại, không phải
 # tốc độ bền vững để ngoại suy nguyên vẹn suốt 5 năm.
 bank_forecast:
+  # Lịch tăng trưởng tín dụng phai tuyến tính từ YoY hiện tại (năm 1) về long_run_nominal_gdp_growth
+  # (năm 5) — giai đoạn chuyển tiếp của mô hình 3 giai đoạn (Damodaran), cùng neo với doanh thu phi
+  # tài chính. Sau đó mới kẹp sàn/trần dưới đây.
   credit_growth_floor: 0.05
   credit_growth_cap: 0.25
   # Payout tiền mặt = cổ tức đã trả / LN 3 năm; NH VN chủ yếu chia CP nên thường thấp.
@@ -423,6 +570,9 @@ bank_forecast:
 # Đổi sang FORWARD phải chạy harness đối chiếu trước/sau (xem D32).
 # ===================================================================
 forecast:
+  # Biên EBIT / ROE / biên giữa chu kỳ lấy trung vị N năm GẦN NHẤT (D61): trung vị 9 năm từng trộn
+  # mô hình kinh doanh cũ, COVID, giai đoạn trước tăng vốn (BAF, CII, VPL, PVD, VPX...).
+  margin_window_years: 4
   base_year_mode: TRAILING     # TRAILING | FORWARD
   momentum_window_quarters: 4
   # Co ngót về median lịch sử: 0 = thuần trailing, 1 = thuần động lượng.
@@ -432,3 +582,46 @@ forecast:
   # Chặn median tăng trưởng doanh thu lịch sử dùng cho năm 1 (DN suy giảm được âm).
   growth_floor: -0.10
   growth_cap: 0.25
+
+# ===================================================================
+# Nghiên cứu chu kỳ ngành thép (scripts/steel_cycle_report.py, valuation/analysis/steel_cycle.py)
+# Đỉnh/đáy xác định bằng zigzag: một pha kết thúc khi giá đảo chiều ≥ ngưỡng % tính từ cực trị.
+# ===================================================================
+steel_cycle:
+  threshold_commodity: 0.20      # giá thực quặng/thép: đảo chiều ≥20% mới tính là đổi pha
+  threshold_stock: 0.35          # cổ phiếu thép VN biến động mạnh: ≥35% (20% cho quá nhiều "chu kỳ" nhiễu)
+  sensitivity_commodity: [0.15, 0.20, 0.30]
+  sensitivity_stock: [0.25, 0.35, 0.45]
+  horizons_months: [6, 12]       # xác suất pha hiện tại kết thúc trong 6/12 tháng tới
+  modern_since: "2000-01"       # kỷ nguyên Trung Quốc chi phối thép (WTO 2001); trước đó giá thép Mỹ bị kiểm soát/bảo hộ
+  forward_months: 12             # lợi suất kỳ hạn tới để đo theo trạng thái pha
+  max_lag_months: 12             # tương quan trễ ±12 tháng
+  stocks: [HPG, HSG, NKG]
+  worldbank_page: https://www.worldbank.org/en/research/commodity-markets
+  fred_series: {WPU101: steel_ppi, CPIAUCNS: us_cpi}
+  worldbank_series: {"Iron ore, cfr spot": iron_ore, "Coal, Australian": coal_aus}
+
+# ===================================================================
+# Báo cáo sáng hằng ngày lên Discord (valuation/services/daily_report.py). Ngưỡng HEURISTIC, chỉnh được.
+# ===================================================================
+daily_report:
+  top_n: 5                  # số mã "cơ hội định giá" (cùng bộ lọc 5 mã tích sản của tab VN100)
+  price_move_pct: 5         # |biến động giá| từ báo cáo trước ≥ ngưỡng này (%) → liệt kê
+  snapshot_stale_days: 14   # snapshot FV cũ hơn số ngày này → cảnh báo chạy lại xếp hạng tuần
+  price_stale_days: 4       # giá đóng cửa mới nhất cũ hơn số ngày này → cảnh báo
+  max_lines: 10             # tối đa số dòng mỗi danh sách (giới hạn 1024 ký tự/field của Discord)
+
+# ===================================================================
+# Trợ lý Discord (@bot + câu hỏi tự do) — valuation/services/assistant.py.
+# Mỗi câu hỏi tối đa 2 lượt DeepSeek (hiểu yêu cầu + viết trả lời từ số Python lấy).
+# ===================================================================
+assistant:
+  daily_limit_per_user: 20       # lượt/người/ngày (giờ VN); hết lượt bot báo, không gọi DeepSeek
+  quota_exempt_ids: [1500873242422939789]   # Discord user ID không giới hạn (chủ bot)
+  max_calls: 3                   # số công cụ tối đa cho 1 câu hỏi
+  max_tickers: 5                 # số mã tối đa mỗi công cụ (valuate/price_moves/news)
+  max_rows: 30                   # số dòng tối đa của bảng xếp hạng / biến động / tin
+  max_sessions: 250              # trần số phiên cho price_moves (~1 năm)
+  data_chars: 12000              # cắt JSON dữ liệu gửi DeepSeek lượt 2 (chặn chi phí token)
+  plan_max_tokens: 400
+  answer_max_tokens: 1000

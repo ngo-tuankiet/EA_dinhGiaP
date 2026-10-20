@@ -1,6 +1,7 @@
 from typing import Dict, Any
 import statistics
 from .base import BaseValuationModel, midcycle_level
+from valuation.config import load_defaults
 from valuation.models.financials import Company
 
 
@@ -8,8 +9,8 @@ class EVEBITDAValuationModel(BaseValuationModel):
     """
     Định giá EV/EBITDA chủ đạo cho ngành lợi nhuận biến động mạnh (hàng không, xi măng).
 
-    GUARDRAIL G2: dùng EBITDA CHUẨN HÓA (trung bình 3 năm gần nhất) thay vì EBITDA
-    một năm — chống nhiễu chu kỳ/sự kiện bất thường (vd hàng không lãi/lỗ đột biến).
+    GUARDRAIL G2: ngành chu kỳ dùng EBITDA CHUẨN HÓA giữa chu kỳ (chống nhiễu đỉnh/đáy, vd hàng không);
+    mã không chu kỳ dùng EBITDA TTM cùng định nghĩa với bội số trailing (fx2).
     """
 
     def __init__(self, ticker: str, current_financials: Dict[str, Any], assumptions: Dict[str, Any]):
@@ -45,7 +46,8 @@ class EVEBITDAValuationModel(BaseValuationModel):
                 bs.cash_and_equivalents + bs.short_term_financial_investments
             ) * 1e9,
             'minority_interest': bs.minority_interest * 1e9,
-            'non_operating_assets': bs.long_term_investments_net * 1e9,
+            # Bội số đo trên EV hoạt động (repo loại XDCB dở dang từng năm) → cộng CIP hiện tại theo sổ sách.
+            'non_operating_assets': (bs.long_term_investments_net + bs.construction_in_progress) * 1e9,
             'shares_outstanding': company.shares_outstanding * 1e6,
             'current_price': company.current_price,
         }
@@ -64,14 +66,20 @@ class EVEBITDAValuationModel(BaseValuationModel):
         if not hist:
             return {"blended_fair_value_per_share": 0.0, "flags": ["NO_EBITDA_DATA"]}
 
-        # EBITDA chuẩn hóa: ngành chu kỳ = biên giữa chu kỳ × doanh thu TTM;
-        # còn lại = trung bình n năm gần nhất (tỷ đồng → đồng).
+        # EBITDA chuẩn hóa: ngành chu kỳ = biên giữa chu kỳ × doanh thu TTM (D36; thiếu dữ liệu → trung bình n
+        # kỳ). Còn lại = EBITDA TTM: bội số mục tiêu là EV/EBITDA TRAILING (EV cuối kỳ / EBITDA cùng kỳ, gồm TTM)
+        # → tử/mẫu cùng định nghĩa (như chân P/E s4). Trung bình [FY−1, FY, TTM] chồng 2 quý và lệch định nghĩa.
         window = hist[-n:] if len(hist) >= n else hist
-        mid = (
-            midcycle_level(hist, self.current_financials.get('revenue_history') or [])
-            if self.assumptions.get('cyclical') else None
-        )
-        norm_ebitda = (mid if mid is not None else statistics.mean(window)) * 1e9
+        if self.assumptions.get('cyclical'):
+            mid = midcycle_level(
+                hist,
+                self.current_financials.get('revenue_history') or [],
+                window=int((load_defaults().get("forecast") or {}).get("margin_window_years", 4)),
+            )
+            norm_ebitda = (mid if mid is not None else statistics.mean(window)) * 1e9
+        else:
+            window = hist[-1:]
+            norm_ebitda = hist[-1] * 1e9
 
         ev = norm_ebitda * target
         net_debt = self.current_financials.get('total_debt', 0.0) - self.current_financials.get('cash_and_equivalents', 0.0)

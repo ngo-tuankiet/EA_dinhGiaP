@@ -19,7 +19,8 @@ from valuation.services.investment_job import job_status, local_now, next_run, s
 from valuation.services.ranking_store import latest_snapshot
 from valuation.views.market_overview import sector_map
 
-# Cổ tức CP/thưởng thiếu ngày GDKHQ → số cp có thể sai → giá trị hợp lý chưa tin được (D48).
+# Cổ tức CP/thưởng thiếu ngày GDKHQ → số cp có thể sai → giá trị hợp lý chưa tin được (D48). Quyền mua
+# thiếu ngày mang cờ riêng RIGHTS_ISSUE_UNDATED (thông tin, không vào hệ số chia) → không phải lỗi dữ liệu.
 DATA_FLAGS_EXTRA = {"CORPORATE_ACTION_UNDATED", "MATERIAL_EVENT_HOLD"}
 _LIQ_SESSIONS = 20  # cùng cửa sổ 20 phiên với engine xếp hạng (investment_snapshot.py)
 _LOOKBACK_DAYS = 60  # ngày lịch đủ chứa 20 phiên kể cả nghỉ lễ
