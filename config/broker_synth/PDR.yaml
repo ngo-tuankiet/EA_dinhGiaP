@@ -1,0 +1,26 @@
+ticker: PDR
+method_family: RNAV (DCF từng dự án + BV, WACC 11.5%)
+use_broker_synth: true
+reports:
+- broker: MBS
+  date: '2026-10-14'
+  file: reports/broker_pdfs/PDR_MBS_2026-10-14.pdf
+  url: ''
+  target_price: 17100
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 17095.47
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 997.809379
+  pages:
+  - 2
+  - 3
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (997.809 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (RNAV (DCF từng dự án
+    + BV, WACC 11.5%)); target_price=17100 là giá CTCK công bố nguyên bản (để đối
+    chiếu, có thể lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+capital_events_after_report: []

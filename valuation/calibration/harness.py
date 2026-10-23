@@ -55,6 +55,8 @@ _ENGINE_CONFIG_KEYS = (
     "publication_lag_days",
     "margin_of_safety",    # ngưỡng khuyến nghị (decision_engine)
     "deepseek_report",     # identity_tolerance_pct / *_warning_pct của run_deterministic_checks
+    "broker_synth",        # D68: trigger_flag_prefixes, max_report_age_days — mô hình tổng hợp CTCK
+    "valuation_review",    # D71: ttl_days, reviewable_* — cổng review (valuation_reviews.yaml)
 )
 
 

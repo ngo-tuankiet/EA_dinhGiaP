@@ -528,3 +528,16 @@ def test_filing_precedence_status():
         == "CRITICAL_CONFLICT"
     )
     assert audit.source_status(4_422.23e9, True, url, 4_422.23e9, item) == "MATCH"
+
+
+def test_bo_quy_moi_nhat_chua_du_ba_bao_cao():
+    # NT2 Q3/2026: có BS + IS, CF chưa công bố → TTM dừng ở Q2/2026 (đủ cả ba); năm (quý 0) giữ nguyên.
+    rec = [
+        N(fiscal_year=y, fiscal_quarter=q, statement=s)
+        for (y, q), ss in {(2026, 2): "BS IS CF", (2026, 3): "BS IS", (2025, 0): "BS IS CF"}.items()
+        for s in ss.split()
+    ]
+    kept, dropped = repo.drop_incomplete_latest_quarters(rec)
+    assert dropped == [(2026, 3)]
+    assert {(r.fiscal_year, r.fiscal_quarter) for r in kept} == {(2026, 2), (2025, 0)}
+    assert repo.drop_incomplete_latest_quarters(kept)[1] == []  # đủ rồi → không bỏ gì

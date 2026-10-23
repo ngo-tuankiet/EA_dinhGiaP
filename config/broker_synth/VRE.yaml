@@ -1,0 +1,63 @@
+ticker: VRE
+method_family: TARGET_PRICE (nhiều CTCK)
+reports:
+- broker: VPBS
+  date: '2026-04-24'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 30600.0
+  shares_used_mn: 2328.8184
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: BSC
+  date: '2026-05-08'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 39100.0
+  shares_used_mn: 2328.8184
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: VIETCAP
+  date: '2026-06-02'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 33200.0
+  shares_used_mn: 2328.8184
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: MBS
+  date: '2026-06-08'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 37900.0
+  shares_used_mn: 2328.8184
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: MIRAE
+  date: '2026-06-19'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 36800.0
+  shares_used_mn: 2328.8184
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: ACBS
+  date: '2026-07-30'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 32200.0
+  shares_used_mn: 2328.8184
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: DSC
+  date: '2026-10-10'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 36850.0
+  shares_used_mn: 2328.8184
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+capital_events_after_report: []
+use_broker_synth: true
+d71_note: 'D71 (23/10/2026): người dùng yêu cầu áp mô hình CTCK, so sánh chọn lọc
+  nhiều CTCK (trung vị trọng số độ mới).'

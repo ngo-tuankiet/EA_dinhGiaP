@@ -1,0 +1,44 @@
+ticker: GEX
+method_family: SOTP (từng mảng/công ty con)
+use_broker_synth: true
+reports:
+- broker: BSC
+  date: '2026-04-10'
+  file: reports/broker_pdfs/GEX_BSC_2026-04-10.pdf
+  url: ''
+  target_price: 48800
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 44062.77
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 1308.471358
+  pages:
+  - 6
+  - 7
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (1,308.471 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (SOTP (từng mảng/công
+    ty con)); target_price=48800 là giá CTCK công bố nguyên bản (để đối chiếu, có
+    thể lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+- broker: KBSV
+  date: '2026-02-13'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 30100.0
+  shares_used_mn: 1308.471358
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: VIETCAP
+  date: '2026-07-13'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 40500.0
+  shares_used_mn: 1308.471358
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+capital_events_after_report: []
+d71_note: 'D71 (23/10/2026): người dùng yêu cầu áp mô hình CTCK, so sánh chọn lọc
+  nhiều CTCK (trung vị trọng số độ mới).'

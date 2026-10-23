@@ -1,0 +1,28 @@
+ticker: NVL
+method_family: RNAV (NPV từng dự án, chiết khấu NAV 10%)
+use_broker_synth: true
+reports:
+- broker: VIETCAP
+  date: '2026-06-19'
+  file: reports/broker_pdfs/NVL_VIETCAP_2026-06-19.pdf
+  url: ''
+  target_price: 18600
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 44697.97
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 2402.08371
+  pages:
+  - 1
+  - 6
+  - 7
+  - 8
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (2,402.084 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (RNAV (NPV từng dự án,
+    chiết khấu NAV 10%)); target_price=18600 là giá CTCK công bố nguyên bản (để đối
+    chiếu, có thể lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+capital_events_after_report: []

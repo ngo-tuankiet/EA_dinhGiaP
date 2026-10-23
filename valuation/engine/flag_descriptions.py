@@ -599,6 +599,22 @@ FLAG_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
         "level": "warning",
         "message": "Doanh nghiệp chu kỳ lỗ TTM — chân P/E áp lên lợi nhuận giữa chu kỳ, không phải lợi nhuận hiện tại; cần rà khả năng phục hồi.",
     },
+    "BROKER_SYNTHESIZED": {
+        "level": "info",
+        "message": "Mô hình tổng hợp của CTCK: mô hình riêng chưa định giá được nên giá trị công bố là trung vị (trọng số độ mới) các báo cáo CTCK, tính lại theo đúng phương pháp của từng CTCK trên số cổ phiếu hiện tại. Không phải mô hình riêng của hệ thống.",
+    },
+    "BROKER_SYNTH_RECON_GAP": {
+        "level": "warning",
+        "message": "Tính lại giá trị theo các cấu phần CTCK công bố lệch giá mục tiêu của chính CTCK đó quá ngưỡng — cần đối chiếu lại số liệu trích từ báo cáo.",
+    },
+    "REVIEWED_PUBLISH": {
+        "level": "info",
+        "message": "Đã rà soát: analyst đã rà lại kết quả (kể cả mức lệch so với CTCK) và cho phép công bố; lý do ghi sau dấu ':'.",
+    },
+    "REVIEW_BLOCKED": {
+        "level": "error",
+        "message": "Rà soát phát hiện lỗi thật — chặn công bố cho tới khi khắc phục; lý do ghi sau dấu ':'.",
+    },
 }
 
 

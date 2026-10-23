@@ -3,10 +3,8 @@
   "configurations": [
     {
       "name": "vn100-streamlit",
-      "runtimeExecutable": "/bin/sh",
-      "runtimeArgs": ["scripts/run_app.sh"],
-      "port": 8506,
-      "autoPort": false
+      "url": "http://localhost:8506",
+      "port": 8506
     }
   ]
 }

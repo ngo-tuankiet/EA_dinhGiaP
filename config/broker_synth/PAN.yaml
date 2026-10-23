@@ -1,0 +1,15 @@
+ticker: PAN
+method_family: TARGET_PRICE (nhiều CTCK)
+reports:
+- broker: MIRAE
+  date: '2025-12-11'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 32600.0
+  shares_used_mn: 258.072996
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+capital_events_after_report: []
+use_broker_synth: true
+d71_note: 'D71 (23/10/2026): người dùng yêu cầu áp mô hình CTCK, so sánh chọn lọc
+  nhiều CTCK (trung vị trọng số độ mới).'

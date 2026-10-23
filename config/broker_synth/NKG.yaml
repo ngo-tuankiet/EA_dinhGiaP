@@ -1,0 +1,26 @@
+ticker: NKG
+method_family: DCF (FCFE+FCFF kết hợp, báo cáo cập nhật nhanh)
+use_broker_synth: true
+reports:
+- broker: FPTS
+  date: '2026-03-04'
+  file: reports/broker_pdfs/NKG_FPTS_2026-03-04.pdf
+  url: ''
+  target_price: 14200
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 6355.9
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 492.323961
+  pages:
+  - 1
+  - 5
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (492.324 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (DCF (FCFE+FCFF kết hợp,
+    báo cáo cập nhật nhanh)); target_price=14200 là giá CTCK công bố nguyên bản (để
+    đối chiếu, có thể lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+capital_events_after_report: []

@@ -632,3 +632,29 @@ assistant:
   data_chars: 12000              # cắt JSON dữ liệu gửi DeepSeek lượt 2 (chặn chi phí token)
   plan_max_tokens: 400
   answer_max_tokens: 1000
+
+# Mô hình tổng hợp CTCK (valuation/engine/models/broker_synth.py, docs/BROKER_SYNTH.md).
+broker_synth:
+  max_report_age_days: 365        # bỏ báo cáo cũ hơn 1 năm
+  recency_half_life_days: 180     # trọng số độ mới cho trung vị có trọng số
+  recon_tolerance: 0.10           # tính lại tại số cp CTCK lệch giá mục tiêu > 10% → BROKER_SYNTH_RECON_GAP
+  discount_forward_to_today: true # giá mục tiêu 12T chiết về hôm nay bằng COE (Damodaran)
+  # Mô hình riêng bị chặn vì một trong các mã này (lỗi dữ liệu/mô hình) → thay bằng BROKER_SYNTH
+  # nếu mã có config/broker_synth/<MÃ>.yaml. So theo tiền tố mã cờ.
+  # D68 (sửa): KHÔNG có SOTP_HOLDINGS_* — mã này đã có cơ chế SOTP_HOLDINGS (cổ phần công ty con
+  # niêm yết theo thị giá) chính xác hơn một báo cáo CTCK đơn lẻ; SOTP_HOLDINGS_UNVERIFIED/STALE là
+  # trạng thái "đúng nhưng chờ người dùng rà tỷ lệ sở hữu" — tự chuyển sang BROKER_SYNTH sẽ vô hiệu
+  # hoá chính cổng chờ rà soát đó. Mã nhóm này chỉ dùng BROKER_SYNTH khi set use_broker_synth: true
+  # tường minh (vd công ty con không niêm yết, cơ chế không áp dụng được).
+  trigger_flag_prefixes: [VALUATION_PROXY, PROXY_IMPLAUSIBLE, NEGATIVE_, CIP_DOMINATES_VALUE,
+                          VALUATION_LEGS_DIVERGE, MATERIAL_EVENT_HOLD, LAND_BANK_INPUT_MISSING,
+                          BANK_NEGATIVE_VALUATION_LEG, DOWNSIDE_EXTREME_REVIEW, UPSIDE_EXTREME_REVIEW]
+
+# Cổng rà soát (config/valuation_reviews.yaml): review publish còn hạn gỡ các cờ "rà soát được";
+# cờ lỗi dữ liệu thật (mọi mã KHÔNG nằm ở đây, và lỗi run_deterministic_checks) không bao giờ gỡ.
+valuation_review:
+  ttl_days: 180
+  reviewable_flags: [UPSIDE_EXTREME_REVIEW, DOWNSIDE_EXTREME_REVIEW, MATERIAL_EVENT_HOLD,
+                     VALUATION_LEGS_DIVERGE, PROXY_IMPLAUSIBLE, NOT_RATED]
+  reviewable_if_broker_synth: [VALUATION_PROXY, CIP_DOMINATES_VALUE]
+  reviewable_if_stakes_verified: [SOTP_HOLDINGS_UNVERIFIED]

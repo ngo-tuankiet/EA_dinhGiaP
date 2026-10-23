@@ -7,7 +7,7 @@ Mục đích:
 - Tính shares outstanding từ Vốn điều lệ / mệnh giá
 - Tính các driver lịch sử (NIM, CIR, credit growth) từ dữ liệu thật
 """
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
@@ -208,17 +208,23 @@ def _query_value(
 
 
 def get_latest_balance(
-    db: Session, ticker: str, keywords: List[str]
+    db: Session, ticker: str, keywords: List[str], as_of: Optional[date] = None
 ) -> float:
     """
-    Lấy giá trị Balance Sheet từ quý gần nhất.
-    Dùng cho: Tổng tài sản, VCSH, Cho vay KH, Tiền gửi KH...
+    Lấy giá trị Balance Sheet từ quý gần nhất CÓ chỉ tiêu đó (quý mới nạp dở, vd TCB Q3/2026 chỉ có IS+CF,
+    không làm mất số). as_of: chỉ dùng quý đã quá hạn công bố (publication_lag_days) — chống lookahead.
+    Dùng cho: Tổng tài sản, VCSH, Cho vay KH, Tiền gửi KH, vốn điều lệ...
     """
-    quarters = _find_latest_4_quarters(db, ticker)
-    if not quarters:
-        return 0.0
-    latest_yr, latest_q = quarters[0]
-    return _query_value(db, ticker, keywords, latest_yr, latest_q)
+    from valuation.config import load_defaults
+
+    lag = int((load_defaults().get("publication_lag_days") or {}).get("quarterly", 30))
+    for yr, q in _find_latest_4_quarters(db, ticker):
+        if as_of is not None and _quarter_end(yr, q) + timedelta(days=lag) > as_of:
+            continue
+        value = _query_value(db, ticker, keywords, yr, q)
+        if value:
+            return value
+    return 0.0
 
 
 def get_ttm_value(
@@ -305,6 +311,8 @@ def get_shares_outstanding(
         .first()
     )
     price_date = latest_price[0] if latest_price else date.today()
+    # Chỉ cắt BCTC theo hạn công bố khi được hỏi một ngày quá khứ; chạy hiện tại dùng mọi kỳ đã có trong DB.
+    bs_cutoff = as_of_date
     if as_of_date is None:
         as_of_date = price_date
     basis_date = max(as_of_date, price_date) if price_basis else as_of_date
@@ -319,13 +327,13 @@ def get_shares_outstanding(
             factor *= 1 + ratio
         return verified_shares * factor
 
-    direct_shares = get_latest_balance(db, ticker, _DIRECT_SHARE_KEYS)
+    direct_shares = get_latest_balance(db, ticker, _DIRECT_SHARE_KEYS, as_of=bs_cutoff)
     if direct_shares > 0:
         return direct_shares * _unreflected_split_factor(db, ticker, _DIRECT_SHARE_KEYS, basis_date)
 
     # Vốn điều lệ thật: charter_capital/paid_in_capital. KHÔNG dùng owners_equity
     # làm proxy (đó là TỔNG vốn CSH, không phải vốn điều lệ → phóng đại số cp).
-    von_dieu_le = get_latest_balance(db, ticker, _CAPITAL_KEYS)
+    von_dieu_le = get_latest_balance(db, ticker, _CAPITAL_KEYS, as_of=bs_cutoff)
     if von_dieu_le > 0:
         # Mệnh giá cổ phiếu VN = 10,000 VND
         return von_dieu_le / 10_000 * _unreflected_split_factor(db, ticker, _CAPITAL_KEYS, basis_date)

@@ -332,6 +332,10 @@ def render_valuation_results(company: Company | CompanyBank, db_write: Session):
         )
         return
 
+    for _lbl in (_res.get("method_label"), _res.get("review_label")):
+        if _lbl:
+            st.info(_lbl)
+
     # 2. Render Kênh Khuyến Nghị (Premium Card Layout)
     from valuation.engine.decision_engine import REC_LABELS_VI
 

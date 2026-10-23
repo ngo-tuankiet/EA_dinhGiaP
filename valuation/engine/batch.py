@@ -53,7 +53,14 @@ def value_ticker(db: Session, ticker: str, macro_env=None, as_of=None) -> Dict[s
         flags = list(res.get("flags", []) or [])
         # Cổng phát hành của valuate() (lỗi dữ liệu/mô hình) phải chặn cả batch,
         # xếp hạng và file xuất — trước đây chỉ UI tôn trọng nó.
-        if fv <= 0 or not res.get("publication_allowed", True) or _NOT_RATEABLE_FLAGS.intersection(flags):
+        # D68: mã BROKER_SYNTH vẫn mang cờ chẩn đoán của mô hình riêng (vd VALUATION_PROXY,
+        # lý do nó không dùng được) để minh bạch — không coi là NOT_RATEABLE nữa, vì quyết
+        # định công bố thật đã nằm ở publication_allowed (tính trên BROKER_SYNTH, không phải
+        # mô hình riêng).
+        rateable_block = (
+            set() if res.get("method") == "BROKER_SYNTH" else _NOT_RATEABLE_FLAGS.intersection(flags)
+        )
+        if fv <= 0 or not res.get("publication_allowed", True) or rateable_block:
             if "NOT_RATEABLE" not in flags:
                 flags.append("NOT_RATEABLE")
             return {

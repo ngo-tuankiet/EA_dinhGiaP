@@ -20,7 +20,7 @@ from __future__ import annotations
 import datetime
 import statistics
 from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import Optional
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
@@ -98,33 +98,11 @@ class ConsensusView:
         return 0 < self.count < MIN_BROKERS_FOR_MEDIAN
 
 
-def weighted_median(values: Sequence[float], weights: Sequence[float]) -> Optional[float]:
-    """Trung vị có trọng số: giá trị đầu tiên mà tổng trọng số tích luỹ đạt >= 50%.
-
-    Khi mọi trọng số bằng nhau và n lẻ, kết quả trùng median thường. Với n chẵn,
-    hàm này trả phần tử "vượt mốc 50%" (không nội suy) — chọn cách này để kết quả
-    luôn là một giá mục tiêu CÓ THẬT của một CTCK, không phải số trung bình nhân tạo.
-    """
-    pairs = [(v, w) for v, w in zip(values, weights) if w > 0]
-    if not pairs:
-        return None
-    pairs.sort(key=lambda p: p[0])
-    total = sum(w for _, w in pairs)
-    if total <= 0:
-        return None
-    acc = 0.0
-    for value, w in pairs:
-        acc += w
-        if acc >= total / 2.0:
-            return float(value)
-    return float(pairs[-1][0])
-
-
-def recency_weight(age_days: int, half_life_days: Optional[float]) -> float:
-    """Trọng số suy giảm theo chu kỳ bán rã. `half_life_days=None` → tắt (1.0)."""
-    if half_life_days is None or half_life_days <= 0:
-        return 1.0
-    return 0.5 ** (max(0, age_days) / float(half_life_days))
+# D68: hai hàm toán thuần chuyển sang valuation.engine.weighted_stats (module đó
+# không đọc dữ liệu CTCK, nên broker_synth.py — nằm trong engine — import được mà
+# không phá quyết định #2 "engine không import dữ liệu đồng thuận CTCK"). Giữ re-export
+# ở đây để không phải sửa các chỗ đang `from valuation.calibration.consensus_view import ...`.
+from valuation.engine.weighted_stats import recency_weight, weighted_median  # noqa: E402,F401
 
 
 def _has_column(db: Session, name: str) -> bool:

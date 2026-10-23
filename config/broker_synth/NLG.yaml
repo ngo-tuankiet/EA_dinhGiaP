@@ -1,0 +1,27 @@
+ticker: NLG
+method_family: RNAV (từng dự án, chiết khấu 35%)
+use_broker_synth: true
+reports:
+- broker: Shinhan Securities Vietnam (SSV)
+  date: '2026-08-19'
+  file: reports/broker_pdfs/NLG_SSV_2026-08-19.pdf
+  url: ''
+  target_price: 35700
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 17287.9
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 485.097383
+  pages:
+  - 1
+  - 5
+  - 11
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (485.097 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (RNAV (từng dự án, chiết
+    khấu 35%)); target_price=35700 là giá CTCK công bố nguyên bản (để đối chiếu, có
+    thể lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+capital_events_after_report: []

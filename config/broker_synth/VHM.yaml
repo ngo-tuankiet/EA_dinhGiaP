@@ -1,0 +1,30 @@
+ticker: VHM
+method_family: 'RNAV (3 cấu phần: dự án đang triển khai DCF, chưa triển khai BV, dịch
+  vụ DCF)'
+use_broker_synth: true
+reports:
+- broker: SSV (Shinhan Securities Vietnam)
+  date: '2026-09-07'
+  file: reports/broker_pdfs/VHM_SSV_2026-09-07.pdf
+  url: ''
+  target_price: 99800
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 819839.44
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 8214.824
+  pages:
+  - 1
+  - 5
+  - 6
+  - 15
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (8,214.824 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (RNAV (3 cấu phần: dự
+    án đang triển khai DCF, chưa triển khai BV, dịch vụ DCF)); target_price=99800
+    là giá CTCK công bố nguyên bản (để đối chiếu, có thể lệch do số CP CTCK dùng khác
+    số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+capital_events_after_report: []

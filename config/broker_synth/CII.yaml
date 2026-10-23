@@ -1,0 +1,27 @@
+ticker: CII
+method_family: BLEND (SOTP 70% + P/B 30%)
+use_broker_synth: true
+reports:
+- broker: BVSC
+  date: '2026-02-05'
+  file: reports/broker_pdfs/CII_BVSC_2026-02-05.pdf
+  url: ''
+  target_price: 24200
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 15463.05
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 671.985291
+  pages:
+  - 17
+  - 18
+  - 19
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (671.985 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (BLEND (SOTP 70% + P/B
+    30%)); target_price=24200 là giá CTCK công bố nguyên bản (để đối chiếu, có thể
+    lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+capital_events_after_report: []

@@ -1,0 +1,135 @@
+ticker: POW
+method_family: TARGET_PRICE (nhiều CTCK)
+reports:
+- broker: SBBS
+  date: '2025-11-03'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 14700.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: BSC
+  date: '2025-11-17'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 14300.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: SHINHAN
+  date: '2026-02-12'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 16000.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: PHS
+  date: '2026-02-26'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 15000.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: DSC
+  date: '2026-03-25'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 14200.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: BVSC
+  date: '2026-04-13'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 15300.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: VPBS
+  date: '2026-05-06'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 15600.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: SSI
+  date: '2026-05-07'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 16000.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: MBS
+  date: '2026-05-26'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 16700.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: FPTS
+  date: '2026-06-29'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 16900.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: ACBS
+  date: '2026-08-06'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 18400.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: MAS
+  date: '2026-08-21'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 16900.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: SHS
+  date: '2026-08-28'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 18000.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: VIETCAP
+  date: '2026-09-10'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 17800.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: KBSV
+  date: '2026-09-21'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 18100.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: VPX
+  date: '2026-09-24'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 17500.0
+  shares_used_mn: 3067.845688
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+capital_events_after_report: []
+use_broker_synth: true
+d71_note: 'D71 (23/10/2026): người dùng yêu cầu áp mô hình CTCK, so sánh chọn lọc
+  nhiều CTCK (trung vị trọng số độ mới).'

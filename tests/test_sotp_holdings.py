@@ -246,7 +246,7 @@ _MSN_HAND_0928 = {"MSR": (57_851.03, 14_384.01), "MML": (8_882.27, 5_338.30)}
 _MSN_SHARES_M_0928 = 1_520.492
 
 
-def test_msn_holdings_mechanism_on_real_db():
+def test_msn_holdings_mechanism_on_real_db(monkeypatch):
     """Test CƠ CHẾ SOTP_HOLDINGS của MSN ở mốc 28/09/2026 — KHÔNG phải golden (fin_a, phản biện r4).
 
     FV đầy đủ MSN lệch CTCK có chủ ý (quyết định Q4 của phi, r4b: MSR/MML cộng theo thị giá) và do
@@ -280,6 +280,10 @@ def test_msn_holdings_mechanism_on_real_db():
         db.close()
     if (cons.get("count") or 0) < 3:
         pytest.skip("Đồng thuận MSN < 3 CTCK ở mốc cố định")
+    # D71: MSN công bố qua BROKER_SYNTH; test này kiểm cơ chế SOTP_HOLDINGS của mô hình riêng → tắt broker_synth.
+    from valuation.engine.models import broker_synth
+
+    monkeypatch.setattr(broker_synth, "load_broker_synth", lambda *a, **k: None)
     res = valuate(company)
     assert "SOTP_HOLDINGS_MODE" in res["flags"]
     held = {h["ticker"]: h for h in company.assumptions.sotp_holdings["holdings"]}

@@ -1,0 +1,26 @@
+ticker: BAF
+method_family: BLEND (DCF FCFF 50% + EV/EBITDA 50%)
+use_broker_synth: true
+reports:
+- broker: VNDS (VNDIRECT)
+  date: '2026-05-15'
+  file: reports/broker_pdfs/BAF_VNDS_2026-05-15.pdf
+  url: ''
+  target_price: 40100
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 14664.54
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 364.82597
+  pages:
+  - 7
+  - 8
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (364.826 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (BLEND (DCF FCFF 50% +
+    EV/EBITDA 50%)); target_price=40100 là giá CTCK công bố nguyên bản (để đối chiếu,
+    có thể lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+capital_events_after_report: []

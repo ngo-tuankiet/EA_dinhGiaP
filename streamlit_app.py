@@ -299,6 +299,10 @@ try:
         # Ghi đè của analyst không được bỏ qua lỗi đầu vào trọng yếu.
         if not _res.get("publication_allowed", True):
             rec = "NOT_RATED"
+        # Nhãn phương pháp/rà soát phải hiện rõ (Mô hình tổng hợp CTCK, Đã rà soát).
+        for _lbl in (_res.get("method_label"), _res.get("review_label")):
+            if _lbl:
+                st.info(_lbl)
 
         # Khối định giá (thẻ khuyến nghị + cảnh báo + cờ): CSS ẩn khi đang mở tab Cổ tức / VN100
         # để 2 tab không liên quan định giá hiển thị gọn (D55).

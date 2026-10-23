@@ -1,0 +1,53 @@
+ticker: TCH
+method_family: 'RNAV (theo dự án: New City II, Green River, H2 Commerce, 150 Tô Hiệu)'
+use_broker_synth: true
+reports:
+- broker: SHS
+  date: '2026-08-09'
+  file: reports/broker_pdfs/TCH_SHS_2026-08-09.pdf
+  url: ''
+  target_price: 17700
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 16144.42
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 1003.320146
+  pages:
+  - 1
+  - 5
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (1,003.320 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (RNAV (theo dự án: New
+    City II, Green River, H2 Commerce, 150 Tô Hiệu)); target_price=17700 là giá CTCK
+    công bố nguyên bản (để đối chiếu, có thể lệch do số CP CTCK dùng khác số CP hiện
+    tại — xem BROKER_SYNTH_RECON_GAP).'
+- broker: VCBS
+  date: '2026-03-28'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 20100.0
+  shares_used_mn: 1003.320146
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: ABS
+  date: '2026-04-17'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 21100.0
+  shares_used_mn: 1003.320146
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: VDSC
+  date: '2026-06-08'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 21700.0
+  shares_used_mn: 1003.320146
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+capital_events_after_report: []
+d71_note: 'D71 (23/10/2026): người dùng yêu cầu áp mô hình CTCK, so sánh chọn lọc
+  nhiều CTCK (trung vị trọng số độ mới).'

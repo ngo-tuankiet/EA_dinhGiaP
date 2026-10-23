@@ -314,13 +314,26 @@ def collect(db, as_of: datetime.date) -> dict:
             auto.append("Dữ liệu: " + "; ".join(dq) + ".")
 
         note = " ".join(filter(None, [notes_cfg.get(t, ""), *auto]))
+        synth = res.get("method") == "BROKER_SYNTH"
+        # BROKER_SYNTH: cờ của mô hình riêng chỉ giải thích vì sao không dùng nó — không đưa vào
+        # "Chú ý" (vd "FV về 0, không công bố" mâu thuẫn với dòng đang Công bố theo BROKER_SYNTH).
+        own_flags = set(res.get("own_model_flags") or []) if synth else set()
         caution = " ".join(
             d["message"].split(". ")[0].rstrip(".") + "."
             for d in describe_flags(
-                [f for f in flags if f not in ("NOT_RATEABLE", "DATA_REVIEW_REQUIRED")]
+                [
+                    f
+                    for f in flags
+                    if f not in ("NOT_RATEABLE", "DATA_REVIEW_REQUIRED") and f not in own_flags
+                ]
             )
             if d["level"] in ("error", "warning")
         )
+        if synth and own_flags:
+            caution = (
+                f"Mô hình riêng không dùng được ({', '.join(sorted(own_flags))}) → dùng mô hình tổng hợp CTCK. "
+                + caution
+            ).strip()
         titles = [
             f"{r.report_date:%d/%m} {r.broker_canon or r.broker}: {r.report_title}"
             for r in _reports(db, t, as_of)
@@ -329,7 +342,10 @@ def collect(db, as_of: datetime.date) -> dict:
 
         w = res.get("weight_intrinsic")
         method = _METHOD_LABEL.get(out.get("method", ""), out.get("method", ""))
-        if w is not None:
+        if synth:
+            # Cùng nhãn app hiển thị (results.py dùng method_label) — trước đây Excel ghi tên mô hình riêng.
+            method, ia, ra = res["method_label"], None, None
+        elif w is not None:
             method += f" (nội tại {w:.0%} / tương đối {1 - w:.0%})"
         rows.append(
             {

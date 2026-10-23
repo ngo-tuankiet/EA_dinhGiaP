@@ -1,0 +1,99 @@
+ticker: PC1
+method_family: P/E relative (EPS forward, P/E 10.2x)
+use_broker_synth: true
+reports:
+- broker: MIRAE
+  date: '2026-10-16'
+  file: reports/broker_pdfs/PC1_MIRAE_2026-10-16.pdf
+  url: ''
+  target_price: 20100
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 8266.84
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 411.285343
+  pages:
+  - 1
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (411.285 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (P/E relative (EPS forward,
+    P/E 10.2x)); target_price=20100 là giá CTCK công bố nguyên bản (để đối chiếu,
+    có thể lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+- broker: MBS
+  date: '2025-11-13'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 28100.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: SHS
+  date: '2026-02-01'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 29500.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: KBSV
+  date: '2026-03-11'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 32100.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: ABS
+  date: '2026-03-12'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 30700.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: BVSC
+  date: '2026-03-23'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 32000.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: DSC
+  date: '2026-06-16'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 25100.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: VIETCAP
+  date: '2026-08-18'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 24700.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: ACBS
+  date: '2026-08-19'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 25700.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+- broker: MAS
+  date: '2026-10-16'
+  method: TARGET_PRICE
+  horizon: 12m_forward
+  target_price: 20100.0
+  shares_used_mn: 411.285343
+  notes: 'D71: giá mục tiêu từ consensus_history (nguồn đã điều chỉnh quyền/cổ tức)
+    → shares_used = số cp hiện tại.'
+capital_events_after_report: []
+d71_note: 'D71 (23/10/2026): người dùng yêu cầu áp mô hình CTCK, so sánh chọn lọc
+  nhiều CTCK (trung vị trọng số độ mới).'

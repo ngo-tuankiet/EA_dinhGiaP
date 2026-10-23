@@ -1,0 +1,35 @@
+# VÍ DỤ GIẢ LẬP cho test — số liệu bịa có chủ đích, KHÔNG phải báo cáo CTCK thật.
+ticker: XYZ
+method_family: RNAV
+use_broker_synth: false
+reports:
+  - broker: CTCK_A
+    date: "2026-09-01"
+    file: reports/broker_pdfs/XYZ/ctck_a_20260901.pdf
+    target_price: 9600            # đồng/cp
+    method: RNAV
+    horizon: valuation_date
+    components:
+      - {name: Dự án 1, value_bn: 1000, basis: DCF dự án, page: 5}
+      - {name: Dự án 2, value_bn: 500, basis: giá trị sổ sách, page: 6}
+    net_debt_bn: 300
+    minority_bn: 0
+    other_adjustments_bn: 0
+    discount_pct: 20
+    shares_used_mn: 100
+    pages: [5, 6]
+  - broker: CTCK_B
+    date: "2026-08-15"
+    file: reports/broker_pdfs/XYZ/ctck_b_20260815.pdf
+    target_price: 10000
+    method: PE
+    horizon: 12m_forward
+    target_multiple: 10
+    forecast: {npat_bn: 100}
+    shares_used_mn: 100
+    pages: [2]
+capital_events_after_report: []
+synthesis: {weighting: recency_median}
+reviewed_by: test
+reviewed_on: "2026-10-20"
+notes: fixture

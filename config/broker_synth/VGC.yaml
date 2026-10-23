@@ -1,0 +1,25 @@
+ticker: VGC
+method_family: P/E relative (EPS forward, P/E ngụ ý 12.7x)
+use_broker_synth: true
+reports:
+- broker: MIRAE
+  date: '2026-09-14'
+  file: reports/broker_pdfs/VGC_MIRAE_2026-09-14.pdf
+  url: ''
+  target_price: 51200
+  method: RNAV
+  horizon: valuation_date
+  equity_value_bn: 22955.52
+  net_debt_bn: 0
+  minority_bn: 0
+  other_adjustments_bn: 0
+  discount_pct: 0
+  shares_used_mn: 448.35
+  pages:
+  - 1
+  notes: 'D68 BROKER_SYNTH đơn giản: equity_value_bn tính ngược từ giá trị hợp lý
+    đã quy đổi theo số CP hiện tại (448.350 triệu cp, build_company_data) do agent
+    trước đã đọc PDF và tính tay theo đúng phương pháp CTCK (P/E relative (EPS forward,
+    P/E ngụ ý 12.7x)); target_price=51200 là giá CTCK công bố nguyên bản (để đối chiếu,
+    có thể lệch do số CP CTCK dùng khác số CP hiện tại — xem BROKER_SYNTH_RECON_GAP).'
+capital_events_after_report: []

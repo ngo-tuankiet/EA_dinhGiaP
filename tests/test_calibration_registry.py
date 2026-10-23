@@ -52,18 +52,18 @@ class TestBangGovernance:
 
     def test_loi_da_thua_nhan_la_backlog(self, registry):
         # FRT còn trong backlog (HDB gỡ 20/10/2026 sau khi sửa lookahead số cp as_of — fx1).
-        assert govern("FRT", "OUT_LOW", registry, TODAY)[0] == GOV_KNOWN_DEFECT
+        assert govern("PVD", "OUT_LOW", registry, TODAY)[0] == GOV_KNOWN_DEFECT
 
     def test_thieu_du_lieu_khong_phai_loi_mo_hinh(self, registry):
         assert govern("NVL", "OUT_HIGH", registry, TODAY)[0] == GOV_DATA_BLOCKED
 
     def test_vao_band_roi_ma_con_khai_bao_thi_bao_don_registry(self, registry):
         """Chống registry mục nát: mã đã vào band mà vẫn còn entry -> nhắc xoá."""
-        assert govern("FRT", "IN_BAND", registry, TODAY)[0] == GOV_OBSOLETE
+        assert govern("PVD", "IN_BAND", registry, TODAY)[0] == GOV_OBSOLETE
 
     def test_khong_do_duoc_thi_khong_phan_xet(self, registry):
         for bs in ("NO_CONSENSUS", "ERROR"):
-            assert govern("FRT", bs, registry, TODAY)[0] == GOV_OK
+            assert govern("PVD", bs, registry, TODAY)[0] == GOV_OK
 
 
 class TestBand:

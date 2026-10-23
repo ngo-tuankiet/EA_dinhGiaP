@@ -1081,6 +1081,24 @@ def drop_incomplete_filing_bs(df: pd.DataFrame) -> tuple[pd.DataFrame, list[tupl
     return df[~mask], dropped
 
 
+def drop_incomplete_latest_quarters(records: list) -> tuple[list, list[tuple[int, int]]]:
+    """Quý mới nhất chưa đủ cả BS, IS và CF (nguồn công bố dần: NT2 Q3/2026 có BS+IS, CF chưa ra) → bỏ các quý
+    sau quý đầy đủ gần nhất, TTM tính tới quý đầy đủ đó. Trộn kỳ (BS quý mới, CF quý cũ) làm vỡ TTM và chặn oan
+    cả mã. Chỉ xét quý (fiscal_quarter > 0). Trả (records đã lọc, các kỳ (năm, quý) bị bỏ)."""
+    stmts: dict[tuple[int, int], set] = {}
+    for r in records:
+        if r.fiscal_quarter > 0:
+            stmts.setdefault((r.fiscal_year, r.fiscal_quarter), set()).add(r.statement)
+    complete = [k for k, v in stmts.items() if {"BS", "IS", "CF"} <= v]
+    if not complete:
+        return records, []
+    last = max(complete)
+    dropped = sorted(k for k in stmts if k > last)
+    if not dropped:
+        return records, []
+    return [r for r in records if r.fiscal_quarter == 0 or (r.fiscal_year, r.fiscal_quarter) <= last], dropped
+
+
 def credit_institution_template(records) -> bool:
     """BCTC theo mẫu tổ chức tín dụng (TT49/2014: có dòng 'thu nhập lãi thuần' trên KQKD) →
     định giá trên vốn chủ như ngân hàng (RI + P/B). Mẫu BCTC quyết định chỉ tiêu nào tồn tại:
@@ -1146,6 +1164,7 @@ def build_company_data(
     if as_of is not None:
         _lag = load_defaults().get("publication_lag_days", {}) or {}
         records = [r for r in records if _published_by(r.fiscal_year, r.fiscal_quarter, as_of, _lag)]
+    records, _q_dropped = drop_incomplete_latest_quarters(records)
     fin_data = [
         {
             "fiscal_year": r.fiscal_year,
@@ -1179,6 +1198,7 @@ def build_company_data(
     historical_bs = []
     historical_cf = []
     extraction_flags = [f"FILING_BS_INCOMPLETE:{y}Q{q}" for y, q in _bs_dropped]
+    extraction_flags += [f"QUARTER_INCOMPLETE_SKIPPED:{y}Q{q}" for y, q in _q_dropped]
     bank_div_paid: Dict[int, float] = {}
     _cip_wip: dict[int, tuple[float, float]] = {}  # năm → (XDCB mã 242, SXKD dở dang dài hạn mã 241)
     from valuation.engine.sector_router import route

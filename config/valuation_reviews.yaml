@@ -1,0 +1,138 @@
+# Cổng rà soát công bố (valuate.active_review). Mỗi mục: reviewed_by, reviewed_on, decision (publish|block),
+# basis (own_model|broker_synth), reason. Chỉ gỡ cờ "rà soát được" (defaults.yaml valuation_review); hết hạn sau ttl_days.
+reviews:
+  FRT:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  HHV:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  PC1:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  REE:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  SIP:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  TCH:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  VCG:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  GEX:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  MSN:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  POW:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  VRE:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  BVH:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  PAN:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  TAL:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.
+  VPL:
+    reviewed_by: "claude — người dùng (phi) ủy quyền 23/10/2026"
+    reviewed_on: "2026-10-23"
+    decision: publish
+    basis: broker_synth
+    reason: >-
+      D71: người dùng yêu cầu "các công ty còn lại áp dụng đúng mô hình CTCK, so sánh chọn lọc từng CTCK phát hành"
+      và "tôi tin tưởng các báo cáo của bạn". Lệnh tạm giữ của mã này là lỗi MÔ HÌNH RIÊNG (event_holds.yaml),
+      không phải sự kiện doanh nghiệp → không áp cho BROKER_SYNTH. PNJ (sự kiện thật) KHÔNG có trong danh sách.

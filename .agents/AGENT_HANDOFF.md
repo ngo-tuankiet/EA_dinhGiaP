@@ -24,14 +24,24 @@
      (cũng là kiến trúc mục tiêu, chưa chạy thật)
 6. Chỉ khi cần tra cứu sâu:
    - `docs/spec.md` — kiến trúc lý tưởng ban đầu, KHÔNG phải hiện trạng.
-   - `DECISIONS.md` — nhật ký quyết định kỹ thuật chi tiết (rất dài, dùng
-     `grep` thay vì đọc hết).
+   - `DECISIONS.md` — chỉ D61 trở đi + mục lục 1 dòng D01..D60; chi tiết cũ
+     ở `docs/archive/DECISIONS_D01-D60.md`. Luôn `grep -n '### D42'` thay vì đọc hết.
    - `docs/DATA_REMEDIATION_REPORT.md` — mã nào dữ liệu đã kiểm chứng, mã nào
      còn bị chặn và vì sao.
    - `docs/DEEPSEEK_COST_CONTROL.md`, `docs/CORPORATE_ACTIONS.md` — trước khi
      đụng bất kỳ code nào gọi DeepSeek hoặc xử lý sự kiện doanh nghiệp.
    - `docs/GITHUB_UPDATE_WORKFLOW.md` — trước khi push.
    - `docs/SECURITY_AND_SECRETS.md` — trước khi commit/push hoặc xử lý key.
+
+## 1b. Trạng thái hiện tại (cập nhật 2026-10-23)
+- 91/100 mã công bố; 30 mã qua BROKER_SYNTH (`config/broker_synth/<MÃ>.yaml`, D68–D71; D71 = nhiều CTCK, TARGET_PRICE).
+- Chưa công bố 9: PNJ (sự kiện P-Lab thật), DIG DSE KDC KOS NAB SJS VIC VPI (không có báo cáo CTCK).
+- Review ủy quyền: `config/valuation_reviews.yaml` (TTL 180 ngày → hết hạn ~21/04/2027).
+- Excel tổng hợp: `python -m scripts.export_valuation_book reports/<tên>.xlsx`.
+- Test: `~/.venv/bin/python -m pytest -q` (~9 phút). Chỉ chạy file liên quan khi sửa nhỏ.
+- PDF CTCK: đổi sang .md trước khi đọc; ưu tiên giá mục tiêu có sẵn trong DB.
+- Push GitHub chỉ khi người dùng bảo, gom 1 lần.
+- Preview: trình khởi chạy không vào được thư mục Google Drive → chạy `sh scripts/run_app.sh` bằng Bash nền, launch.json chỉ gắn url.
 
 ## 2. Lỗi đã gặp — đọc để không lặp lại
 

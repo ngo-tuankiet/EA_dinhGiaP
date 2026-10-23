@@ -62,9 +62,44 @@ PUBLICATION_BLOCKING_FLAGS = frozenset({
 })
 
 
-def _apply_publication_gate(company, result: Dict[str, Any]) -> Dict[str, Any]:
+REVIEWS_FILE = None  # None → config/valuation_reviews.yaml (test có thể trỏ file khác)
+
+
+def load_valuation_reviews() -> dict:
+    """config/valuation_reviews.yaml: ticker → {reviewed_by, reviewed_on, decision, basis, reason...}."""
+    import yaml
+    from valuation.config import PROJECT_ROOT
+
+    path = REVIEWS_FILE or PROJECT_ROOT / "config" / "valuation_reviews.yaml"
+    if not path.exists():
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        reviews = (yaml.safe_load(f) or {}).get("reviews") or {}
+    return {str(k).upper(): v for k, v in reviews.items()}
+
+
+def active_review(ticker: str, basis: str, as_of) -> dict | None:
+    """Review còn hạn (TTL) và cùng basis với phương pháp đang dùng; thiếu trường bắt buộc → lỗi."""
+    from datetime import date, timedelta
+    from valuation.config import load_defaults
+
+    rv = load_valuation_reviews().get(ticker.upper())
+    if not rv:
+        return None
+    missing = [k for k in ("reviewed_by", "reviewed_on", "decision", "basis", "reason") if not rv.get(k)]
+    if missing or rv["decision"] not in ("publish", "block") or rv["basis"] not in ("own_model", "broker_synth"):
+        raise ValueError(f"valuation_reviews.yaml: {ticker} sai/thiếu {missing or 'decision/basis'}")
+    on = date.fromisoformat(str(rv["reviewed_on"]))
+    ttl = int(load_defaults()["valuation_review"]["ttl_days"])
+    if rv["basis"] != basis or not (on <= as_of <= on + timedelta(days=ttl)):
+        return None
+    return rv
+
+
+def _gate(company, result: Dict[str, Any], macro_env=None) -> Dict[str, Any]:
     """Giữ số chẩn đoán nội bộ nhưng chặn phát hành khi đầu vào/mô hình lỗi."""
     from valuation.report.verified_summary import run_deterministic_checks
+    from valuation.config import load_defaults
 
     result = dict(result)
     value = result["blended_fair_value_per_share"]
@@ -85,17 +120,107 @@ def _apply_publication_gate(company, result: Dict[str, Any]) -> Dict[str, Any]:
     # Kết quả cực đoan phải được rà soát trước khi phát hành (số chẩn đoán vẫn giữ lại).
     # So theo mã cờ trước ':' — cờ mang chi tiết (vd SOTP_SUBSIDIARY_DATA_ERROR:GEL(...)) vẫn chặn.
     codes = {str(f).split(":", 1)[0].strip() for f in flags}
-    blocked = any(c["severity"] == "error" for c in checks) or bool(
-        codes & PUBLICATION_BLOCKING_FLAGS
-    ) or result.get("not_rated", False) or ai_unverified
+    blocking = codes & PUBLICATION_BLOCKING_FLAGS
+    not_rated = bool(result.get("not_rated", False))
+    basis = "broker_synth" if result.get("method") == "BROKER_SYNTH" else "own_model"
+    review = active_review(company.ticker, basis, date.today())
+    review_block = bool(review and review["decision"] == "block")
+    lifted = False
+    if review and review["decision"] == "publish":
+        # Chỉ gỡ cờ "rà soát được"; cờ lỗi dữ liệu thật và lỗi checks (severity error) vẫn chặn.
+        rcfg = load_defaults()["valuation_review"]
+        ok = set(rcfg["reviewable_flags"])
+        if basis == "broker_synth":
+            ok |= set(rcfg["reviewable_if_broker_synth"])
+        if review.get("stakes_verified"):
+            ok |= set(rcfg["reviewable_if_stakes_verified"])
+        hard_left = blocking - ok
+        # not_rated từ mô hình chỉ gỡ được khi FV > 0 và không có cờ vốn chủ/chân âm.
+        negative = value <= 0 or any("NEGATIVE" in c for c in codes)
+        if not hard_left and not (not_rated and negative):
+            lifted = bool(blocking) or not_rated
+            blocking, not_rated = set(), False
+    blocked = (any(c["severity"] == "error" for c in checks) or bool(blocking) or not_rated
+               or ai_unverified or review_block)
     result["data_checks"] = checks
     result["publication_allowed"] = not blocked
+    if review_block:
+        flags.add(f"REVIEW_BLOCKED:{review['reason']}")
+    if review and not blocked:
+        flags.add(f"REVIEWED_PUBLISH:{review['reason']}")
+        result["review"] = review
+        result["review_label"] = f"Đã rà soát: {review['reason']}"
+    if lifted and not blocked:
+        result["not_rated"] = False
+        decision = recommend(company.ticker, company.current_price, value,
+                             governance=getattr(company, "governance", None), macro_env=macro_env)
+        result.update(decision=decision, recommendation=decision["recommendation"], upside=decision["upside"])
+        flags -= {"NOT_RATED", "DATA_REVIEW_REQUIRED"}
+    result["flags"] = sorted(flags)
     if blocked:
         result["not_rated"] = True
         result["recommendation"] = "NOT_RATED"
         result["decision"] = {**result.get("decision", {}), "recommendation": "NOT_RATED"}
         result["flags"] = sorted(flags | {"DATA_REVIEW_REQUIRED", "NOT_RATED"})
     return result
+
+
+def _broker_synth_result(company, own: Dict[str, Any], synth: Dict[str, Any], macro_env=None) -> Dict[str, Any]:
+    """Kết quả công bố theo BROKER_SYNTH; giữ FV/cờ mô hình riêng để so sánh."""
+    fv = float(synth["blended_fair_value_per_share"])
+    decision = recommend(company.ticker, company.current_price, fv,
+                         governance=getattr(company, "governance", None), macro_env=macro_env)
+    # Cờ cấp doanh nghiệp (dữ liệu nguồn) vẫn đi theo; cờ của mô hình riêng chỉ nằm ở own_model_flags.
+    return {
+        "not_rated": False,
+        "blended_fair_value_per_share": fv,
+        "intrinsic_fv": fv,
+        "relative_fv": fv,
+        "weight_intrinsic": 1.0,
+        "upside": decision["upside"],
+        "recommendation": decision["recommendation"],
+        "decision": decision,
+        "method": "BROKER_SYNTH",
+        "method_label": synth["method_label"],
+        "broker_synth": synth,
+        "own_model_fv": own.get("blended_fair_value_per_share"),
+        "own_model_flags": own.get("flags", []),
+        "projections": own.get("projections"),
+        "flags": ["BROKER_SYNTHESIZED"] + synth["flags"] + _review_flags(decision["upside"])
+                 + _warning_codes(company) + list(getattr(company, "data_flags", []) or []),
+    }
+
+
+def _apply_publication_gate(company, result: Dict[str, Any], macro_env=None) -> Dict[str, Any]:
+    """Cổng công bố: chặn/gỡ theo cờ + review; mô hình riêng bị chặn vì lỗi dữ liệu/mô hình
+    và mã có config/broker_synth/<MÃ>.yaml → công bố theo Mô hình tổng hợp CTCK."""
+    from valuation.config import load_defaults
+    from valuation.engine.models.broker_synth import load_broker_synth, valuate_broker_synth
+
+    gated = _gate(company, result, macro_env)
+    # load_broker_synth() raise ValueError cho mã sai định dạng (chống path injection, cố ý —
+    # xem test_broker_synth.py::test_ticker_khong_hop_le). Mã mô phỏng trong unit test (vd
+    # "HOLDX") không phải mã VN100 thật, không nên làm sập cả valuate() — bỏ qua broker_synth
+    # cho các mã không đúng dạng [A-Z0-9]{3} thay vì gọi load_broker_synth với chúng.
+    if not re.fullmatch(r"[A-Z0-9]{3}", str(company.ticker).upper()):
+        return gated
+    cfg = load_broker_synth(company.ticker)
+    if not cfg:
+        return gated
+    prefixes = tuple(load_defaults()["broker_synth"]["trigger_flag_prefixes"])
+    own_codes = {str(f).split(":", 1)[0].strip() for f in gated["flags"]}
+    triggered = not gated["publication_allowed"] and any(c.startswith(prefixes) for c in own_codes)
+    if not (cfg.get("use_broker_synth") or triggered):
+        return gated
+    synth = valuate_broker_synth(company, cfg)
+    published = _gate(company, _broker_synth_result(company, gated, synth, macro_env), macro_env)
+    # Cờ chẩn đoán của mô hình riêng (lý do nó không dùng được, vd VALUATION_PROXY) hiển thị
+    # minh bạch trong kết quả cuối — nhưng chỉ nối SAU khi _gate ở trên đã quyết xong, để không
+    # bị cổng chặn nhầm lần hai (VALUATION_PROXY/PROXY_IMPLAUSIBLE... vẫn nằm trong
+    # PUBLICATION_BLOCKING_FLAGS, đúng cho mô hình riêng nhưng không áp cho BROKER_SYNTH).
+    own_diag = [f for f in gated.get("flags", []) if f not in ("NOT_RATED", "DATA_REVIEW_REQUIRED")]
+    published["flags"] = sorted(set(published["flags"]) | set(own_diag))
+    return published
 
 
 def valuate(company: Union[Company, CompanyBank], projections=None, macro_env: MacroEnvironment = None) -> Dict[str, Any]:
@@ -155,7 +280,7 @@ def valuate(company: Union[Company, CompanyBank], projections=None, macro_env: M
             governance=company.governance, macro_env=macro_env, not_rated=bool(leg_flags),
         )
 
-        return _apply_publication_gate(company, {
+        return _apply_publication_gate(company, macro_env=macro_env, result={
             "not_rated": bool(leg_flags),
             "blended_fair_value_per_share": blended_fv,
             "intrinsic_fv": intrinsic_fv,
@@ -193,7 +318,7 @@ def valuate(company: Union[Company, CompanyBank], projections=None, macro_env: M
         governance=company.governance, macro_env=macro_env, not_rated=not_rated,
     )
 
-    return _apply_publication_gate(company, {
+    return _apply_publication_gate(company, macro_env=macro_env, result={
         "not_rated": not_rated,
         "blended_fair_value_per_share": blended_fv,
         "intrinsic_fv": blended_fv,
